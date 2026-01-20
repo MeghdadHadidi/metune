@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Local settings (contains credentials)
+.claude/*.local.md
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store

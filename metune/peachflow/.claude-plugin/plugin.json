@@ -1,0 +1,18 @@
+{
+  "name": "peachflow",
+  "version": "1.1.0",
+  "description": "Professional product development workflow with discovery, quarterly planning, POC, implementation, and testing phases. Features collaborative AI agents simulating a real software team.",
+  "author": {
+    "name": "Peachflow",
+    "url": "https://github.com/your-org/peachflow"
+  },
+  "license": "MIT",
+  "keywords": [
+    "product-development",
+    "spec-driven",
+    "quarterly-planning",
+    "discovery",
+    "agile",
+    "software-team"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "metune",
+  "metadata": {
+    "description": "A marketplace for Claude Code plugins focused on development experience (DX)."
+  },
+  "owner": {
+    "name": "Meghdad Hadidi",
+    "url": "https://github.com/MeghdadHadidi"
+  },
+  "plugins": [
+    {
+      "name": "peachflow",
+      "description": "Professional product development workflow for Claude Code, simulating a real software engineering team.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Meghdad Hadidi",
+        "url": "https://github.com/MeghdadHadidi"
+      },
+      "source": "./peachflow",
+      "category": "development",
+      "homepage": "https://github.com/MeghdadHadidi/metune",
+      "tags": ["developer", "SDLC", "DX"]
+    },
+    {
+      "name": "teleporter",
+      "description": "Control Claude Code remotely via Telegram. Get notifications, answer questions, and interact with your Claude sessions from anywhere.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Meghdad Hadidi",
+        "url": "https://github.com/MeghdadHadidi"
+      },
+      "source": "./teleporter",
+      "category": "development",
+      "homepage": "https://github.com/MeghdadHadidi/metune",
+      "tags": ["developer", "SDLC", "DX"]
+    }
+  ]
+}
