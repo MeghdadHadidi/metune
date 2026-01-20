@@ -25,7 +25,7 @@ def get_config() -> tuple[str, str]:
     return token, chat_id
 
 
-def api_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+def api_request(method: str, params: Dict[str, Any], request_timeout: int = 30) -> Dict[str, Any]:
     """Make a request to the Telegram Bot API."""
     token, _ = get_config()
     url = f"https://api.telegram.org/bot{token}/{method}"
@@ -38,7 +38,7 @@ def api_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=request_timeout) as response:
             result = json.loads(response.read().decode("utf-8"))
             if not result.get("ok"):
                 raise ValueError(f"API error: {result.get('description', 'Unknown error')}")
@@ -166,7 +166,9 @@ def get_updates(
     if allowed_updates:
         params["allowed_updates"] = allowed_updates
 
-    return api_request("getUpdates", params)
+    # Use a request timeout slightly longer than the Telegram long-poll timeout
+    # to avoid urllib timing out before Telegram responds
+    return api_request("getUpdates", params, request_timeout=timeout + 10)
 
 
 def delete_message(message_id: int, chat_id: Optional[str] = None) -> bool:
@@ -230,11 +232,12 @@ def create_session_buttons(include_context: bool = True) -> Dict[str, Any]:
     return create_inline_keyboard(buttons)
 
 
-def create_question_buttons(options: List[Dict[str, str]]) -> Dict[str, Any]:
+def create_question_buttons(options: List[Dict[str, str]], multi_select: bool = False) -> Dict[str, Any]:
     """
-    Create buttons for a multi-choice question.
+    Create buttons for a question.
 
     options: List of dicts with 'label' and optionally 'value' keys
+    multi_select: If True, adds a note that multiple selections are allowed
     """
     buttons = []
 
@@ -244,10 +247,15 @@ def create_question_buttons(options: List[Dict[str, str]]) -> Dict[str, Any]:
         # Truncate label if too long for button
         if len(label) > 30:
             label = label[:27] + "..."
+        # For multi-select, we'd need more complex state management
+        # For now, single-click still works but user can type multiple
         buttons.append([{"text": label, "callback_data": f"answer:{value}"}])
 
-    # Add text input option
-    buttons.append([{"text": "💬 Type reply...", "callback_data": "text_input"}])
+    # Add text input option (especially useful for multi-select)
+    if multi_select:
+        buttons.append([{"text": "💬 Type multiple (comma-separated)", "callback_data": "text_input"}])
+    else:
+        buttons.append([{"text": "💬 Type reply...", "callback_data": "text_input"}])
 
     return create_inline_keyboard(buttons)
 

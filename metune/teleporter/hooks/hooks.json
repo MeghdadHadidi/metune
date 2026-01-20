@@ -32,7 +32,7 @@
           {
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/hook_handlers.py ask_user_question",
-            "timeout": 10
+            "timeout": 120
           }
         ]
       }
@@ -44,6 +44,18 @@
           {
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/hook_handlers.py notification",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/hook_handlers.py user_prompt_submit",
             "timeout": 10
           }
         ]

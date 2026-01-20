@@ -73,15 +73,17 @@ def process_callback_query(callback: dict) -> None:
 
     elif data == "text_input":
         answer_callback_query(callback_id, "Reply to this message with your text")
-        # Update message to indicate waiting for text
+        # Update message to indicate waiting for text reply
         try:
-            text = message.get("text", "")
-            if "Waiting for your reply" not in text:
-                edit_message(
-                    message_id,
-                    text + "\n\n<i>💬 Waiting for your reply...</i>",
-                    reply_markup=create_session_buttons(include_context=False)
-                )
+            cwd = session.get("cwd", "unknown")
+            from telegram_api import format_session_message
+            text = format_session_message(
+                session_id,
+                cwd,
+                status="waiting for input",
+                question="💬 Waiting for your text reply..."
+            )
+            edit_message(message_id, text, reply_markup=create_session_buttons(include_context=False))
         except Exception:
             pass
 
@@ -91,22 +93,9 @@ def process_callback_query(callback: dict) -> None:
         answer_callback_query(callback_id, f"Selected: {answer_value}")
         store_pending_response(session_id, answer_value)
 
-        # Clear the question from the session
-        update_session(session_id, question=None, question_options=None)
-
-        # Update message to show selection
-        try:
-            cwd = session.get("cwd", "unknown")
-            from telegram_api import format_session_message
-            new_text = format_session_message(
-                session_id,
-                cwd,
-                status="active",
-                question=f"✅ Selected: {answer_value}"
-            )
-            edit_message(message_id, new_text, reply_markup=create_session_buttons())
-        except Exception:
-            pass
+        # Don't update message here - let the hook handler do it
+        # This prevents race conditions where the hook and poller
+        # both try to update the message at the same time
 
     else:
         answer_callback_query(callback_id, "Unknown action")
@@ -128,20 +117,19 @@ def process_message(message: dict) -> None:
 
     session_id, session = result
 
-    # Store the text response
+    # Store the text response - let the hook handler update the message
     store_pending_response(session_id, text)
-
-    # Clear question state
-    update_session(session_id, question=None, question_options=None)
 
 
 def poll_loop(poll_interval: int = 30) -> None:
     """Main polling loop."""
     global running
+    import urllib.error
+    import socket
 
     offset = None
     consecutive_errors = 0
-    max_consecutive_errors = 5
+    max_consecutive_errors = 10
 
     print(f"Poller started (PID: {os.getpid()})")
     set_poller_pid(os.getpid())
@@ -155,13 +143,14 @@ def poll_loop(poll_interval: int = 30) -> None:
                 time.sleep(5)
                 continue
 
-            # Get updates from Telegram
+            # Get updates from Telegram with long polling
             updates = get_updates(
                 offset=offset,
                 timeout=poll_interval,
                 allowed_updates=["message", "callback_query"]
             )
 
+            # Reset error counter on success
             consecutive_errors = 0
 
             for update in updates:
@@ -186,7 +175,28 @@ def poll_loop(poll_interval: int = 30) -> None:
         except KeyboardInterrupt:
             break
 
+        except (socket.timeout, urllib.error.URLError) as e:
+            # Timeouts are expected with long polling - just continue
+            # URLError can wrap socket.timeout
+            error_str = str(e).lower()
+            if "timed out" in error_str or "timeout" in error_str:
+                # This is normal - long polling timeout, just retry
+                continue
+            else:
+                # Actual network error
+                consecutive_errors += 1
+                print(f"Network error ({consecutive_errors}/{max_consecutive_errors}): {e}", file=sys.stderr)
+                if consecutive_errors >= max_consecutive_errors:
+                    print("Too many consecutive network errors, stopping poller", file=sys.stderr)
+                    break
+                time.sleep(min(2 ** consecutive_errors, 30))
+
         except Exception as e:
+            # Check if it's a timeout wrapped in another exception
+            error_str = str(e).lower()
+            if "timed out" in error_str or "timeout" in error_str:
+                continue
+
             consecutive_errors += 1
             print(f"Poll error ({consecutive_errors}/{max_consecutive_errors}): {e}", file=sys.stderr)
 
@@ -206,14 +216,13 @@ def start_poller_daemon() -> int:
     # Check if already running
     existing_pid = get_poller_pid()
     if existing_pid:
-        print(f"Poller already running with PID: {existing_pid}")
+        # Don't print to stdout - it corrupts hook JSON output
         return existing_pid
 
     # Fork to background
     pid = os.fork()
     if pid > 0:
-        # Parent process
-        print(f"Started poller daemon with PID: {pid}")
+        # Parent process - don't print to stdout, it corrupts hook JSON output
         return pid
 
     # Child process - become daemon
@@ -251,7 +260,6 @@ def stop_poller() -> bool:
     """Stop the running poller daemon. Returns True if stopped."""
     pid = get_poller_pid()
     if not pid:
-        print("Poller not running")
         return False
 
     try:
@@ -266,10 +274,8 @@ def stop_poller() -> bool:
         except OSError:
             pass
         clear_poller_pid()
-        print(f"Stopped poller (PID: {pid})")
         return True
-    except OSError as e:
-        print(f"Error stopping poller: {e}")
+    except OSError:
         clear_poller_pid()
         return False
 

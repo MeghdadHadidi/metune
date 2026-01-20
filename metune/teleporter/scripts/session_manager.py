@@ -13,6 +13,13 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 
+# Sentinel value to distinguish "not provided" from "explicitly set to None"
+class _NotProvided:
+    pass
+
+NOT_PROVIDED = _NotProvided()
+
+
 def get_sessions_file() -> str:
     """Get the path to the sessions file."""
     # Store in user's home directory under .teleporter
@@ -83,12 +90,18 @@ def register_session(
 
 def update_session(
     session_id: str,
-    status: Optional[str] = None,
-    question: Optional[str] = None,
-    question_options: Optional[list] = None,
-    message_id: Optional[int] = None
+    status: Any = NOT_PROVIDED,
+    question: Any = NOT_PROVIDED,
+    question_options: Any = NOT_PROVIDED,
+    message_id: Any = NOT_PROVIDED,
+    last_answer: Any = NOT_PROVIDED
 ) -> None:
-    """Update a session's state."""
+    """
+    Update a session's state.
+
+    Use NOT_PROVIDED (default) to leave a field unchanged.
+    Use None explicitly to clear a field.
+    """
     data = load_sessions()
 
     if session_id not in data["sessions"]:
@@ -97,14 +110,16 @@ def update_session(
     session = data["sessions"][session_id]
     session["last_updated"] = datetime.now().isoformat()
 
-    if status is not None:
+    if not isinstance(status, _NotProvided):
         session["status"] = status
-    if question is not None:
+    if not isinstance(question, _NotProvided):
         session["current_question"] = question
-    if question_options is not None:
+    if not isinstance(question_options, _NotProvided):
         session["question_options"] = question_options
-    if message_id is not None:
+    if not isinstance(message_id, _NotProvided):
         session["message_id"] = message_id
+    if not isinstance(last_answer, _NotProvided):
+        session["last_answer"] = last_answer
 
     save_sessions(data)
 
@@ -180,6 +195,16 @@ def clear_pending_response(session_id: str) -> None:
     if session_id in data["pending_responses"]:
         del data["pending_responses"][session_id]
         save_sessions(data)
+
+
+def peek_pending_response(session_id: str) -> Optional[str]:
+    """Check if there's a pending response without consuming it."""
+    data = load_sessions()
+
+    if session_id in data["pending_responses"]:
+        return data["pending_responses"][session_id]["response"]
+
+    return None
 
 
 def set_poller_pid(pid: int) -> None:
