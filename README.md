@@ -1,4 +1,4 @@
-# Claude Code Plugins
+# Metune Marketplace for Claude Code Plugins
 
 Professional Claude Code plugins for streamlined software development workflows.
 
@@ -32,9 +32,28 @@ Peachflow transforms Claude Code into a complete software development team with:
 
 #### Installation
 
+##### Option #1
+
+Use claude built-in command
+
+```bash
+# run Claude Code
+claude
+
+# When claude is running, add this repo as a new plugin marketplace
+# Make sure you use the ssh address of the repository (not HTTPS)
+/plugin marketplace add git@github.com:MeghdadHadidi/metune.git
+```
+
+When marketplace is added, you will see a list of plugins in that repository
+
+##### Option #2
+
+Clone and copy files manually
+
 ```bash
 # Clone this repository
-git clone https://github.com/MeghdadHadidi/claude-plugins.git
+git clone https://github.com/MeghdadHadidi/metune.git
 
 # Peachflow will be auto-discovered by Claude Code
 # Or manually copy to plugins directory
