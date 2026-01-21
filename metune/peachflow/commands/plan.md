@@ -1,5 +1,5 @@
 ---
-name: plan
+name: peachflow:plan
 description: Create quarterly planning. Without arguments creates master roadmap. With quarter argument (Q1, Q01, quarter 1) creates detailed quarter plan with git worktree.
 argument-hint: "[optional: Q1 | Q01 | quarter 1]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion

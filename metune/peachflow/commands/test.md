@@ -1,5 +1,5 @@
 ---
-name: test
+name: peachflow:test
 description: Run tests, analyze coverage, and suggest cleanup. Optional phase that can be run anytime during implementation.
 argument-hint: "[optional: 'all' | 'unit' | 'integration' | 'e2e' | specific test file]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion

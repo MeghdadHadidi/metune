@@ -1,5 +1,5 @@
 ---
-name: implement
+name: peachflow:implement
 description: Execute implementation tasks from quarter plan. Works only on feature branches. Implements tasks sequentially with code review and commit checkpoints.
 argument-hint: "[task ID: T001 | 'next' for next task | 'phase 1' for entire phase]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion

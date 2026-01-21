@@ -1,9 +1,0 @@
-{
-  "name": "teleporter",
-  "version": "0.1.1",
-  "description": "Control Claude Code remotely via Telegram - bidirectional communication with inline buttons",
-  "author": {
-    "name": "meg"
-  },
-  "keywords": ["telegram", "remote", "notifications", "mobile", "automation"]
-}

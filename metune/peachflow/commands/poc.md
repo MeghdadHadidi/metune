@@ -1,5 +1,5 @@
 ---
-name: poc
+name: peachflow:poc
 description: Create visual POC/prototype with mocked data. Focuses on look and feel based on design documents. Optional phase for validation before full implementation.
 argument-hint: "[optional: specific screens or flows to POC]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion

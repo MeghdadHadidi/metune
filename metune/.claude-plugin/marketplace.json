@@ -21,19 +21,6 @@
       "category": "development",
       "homepage": "https://github.com/MeghdadHadidi/metune",
       "tags": ["developer", "SDLC", "DX"]
-    },
-    {
-      "name": "teleporter",
-      "description": "Control Claude Code remotely via Telegram. Get notifications, answer questions, and interact with your Claude sessions from anywhere.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Meghdad Hadidi",
-        "url": "https://github.com/MeghdadHadidi"
-      },
-      "source": "./teleporter",
-      "category": "development",
-      "homepage": "https://github.com/MeghdadHadidi/metune",
-      "tags": ["developer", "SDLC", "DX"]
     }
   ]
 }
