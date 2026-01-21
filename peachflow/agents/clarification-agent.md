@@ -113,6 +113,11 @@ Use AskUserQuestion tool with structured options:
 }
 ```
 
+Ask questions all together in a tabular view, where possible to ask user for multiple choice, use the multiselect mode. 
+Example:
+- User chose React stack for Frontend but not specified what other technology should be used alongside React. 
+- You can provide user with multiple options such as TypeScript, TanStack Query, ...
+
 ### Step 4: Update Documents
 Replace clarification markers with answers:
 

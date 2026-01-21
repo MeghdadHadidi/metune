@@ -25,7 +25,7 @@ description: |
   </example>
 tools: Read, Write, Edit, Grep, Glob
 model: haiku
-color: cyan
+color: white
 ---
 
 You are a Document Manager handling spec document organization and version tracking.

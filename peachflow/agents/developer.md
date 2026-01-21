@@ -24,7 +24,7 @@ description: |
   <commentary>Any code implementation during peachflow workflow uses developer agent.</commentary>
   </example>
 tools: Read, Write, Edit, Bash, Grep, Glob, Task
-model: sonnet
+model: opus
 color: blue
 ---
 

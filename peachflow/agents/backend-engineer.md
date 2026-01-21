@@ -24,7 +24,7 @@ description: |
   <commentary>API implementation tasks should involve backend-engineer for consistency with specs.</commentary>
   </example>
 tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, Task
-model: sonnet
+model: opus
 color: green
 ---
 
