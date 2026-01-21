@@ -34,17 +34,6 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Before stopping, verify:\n1. Are there any in-progress tasks that should be marked complete or paused?\n2. Are there uncommitted changes that should be committed?\n3. Should clarification questions be asked?\n\nIf any issues need attention, suggest the next action. Respond with JSON: {\"ok\": true} to stop, or {\"ok\": false, \"reason\": \"suggested next action\"} to continue.",
-            "timeout": 30
-          }
-        ]
-      }
     ]
   }
 }
