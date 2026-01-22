@@ -10,6 +10,47 @@ owner: domain-consultant
 
 # Domain Research: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. If any answer is unclear or concerning, flag it immediately.
+
+### Market Viability (Must Answer First)
+
+| Question | Answer | Confidence | Source |
+|----------|--------|------------|--------|
+| What is the TAM, and what % is realistically capturable? | | | |
+| Is the market growing, stagnating, or consolidating? | | | |
+| What regulatory/compliance barriers could kill this product? | | | |
+| Why hasn't this been solved already? What's changed? | | | |
+
+### Competitive Reality
+
+| Question | Answer | Confidence | Source |
+|----------|--------|------------|--------|
+| Who are top 3 competitors and what's their unfair advantage? | | | |
+| What's the switching cost for users from existing solutions? | | | |
+| Is there a dominant player creating winner-takes-all dynamics? | | | |
+| Are there emerging technologies creating a window of opportunity? | | | |
+
+### User Economics
+
+| Question | Answer | Confidence | Source |
+|----------|--------|------------|--------|
+| How much are users paying (money/time/frustration) to solve this today? | | | |
+| What's the expected LTV:CAC ratio? | | | |
+| Is this a "vitamin" (nice-to-have) or "painkiller" (must-have)? | | | |
+| What would make this market unappealing in 2 years? | | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] TAM < $10M or declining
+> - [ ] No clear regulatory path
+> - [ ] Dominant player with insurmountable moat
+> - [ ] User pain is not urgent enough to drive switching
+
+---
+
 ## Executive Summary
 
 {2-3 paragraph overview of the market, opportunity, and key findings}

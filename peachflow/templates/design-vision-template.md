@@ -10,6 +10,60 @@ owner: product-designer
 
 # Design Vision: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. Design without strategic alignment is decoration.
+
+### Emotional Design
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What emotion should users feel in the first 5 seconds? (Trust? Excitement? Calm?) | | |
+| What's the "personality" of this product as a person? (Mentor? Assistant? Tool?) | | |
+| How do we want users to describe the experience to friends? | | |
+
+### Differentiation
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What visual element will make this instantly recognizable in a screenshot? | | |
+| How do we look different from competitors without being weird for weird's sake? | | |
+| What design "tropes" in this industry should we deliberately avoid? | | |
+
+### Color & Psychology
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What colors align with emotional response AND industry context? | | |
+| Are there cultural considerations (global audience) affecting choices? | | |
+| How do we ensure accessibility without compromising visual identity? | | |
+
+### Interaction Philosophy
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| Should the interface feel "dense and powerful" or "spacious and simple"? | | |
+| Where is delight appropriate vs. where does it become annoying? | | |
+| What's our stance on animations — functional only, or expressive? | | |
+
+### Design System Scalability
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| Which 5-7 components, if designed perfectly, cover 80% of the interface? | | |
+| How do we build consistency without building a prison? | | |
+| What decisions need to be "locked" vs "flexible" for different contexts? | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] Can't articulate the desired emotional response
+> - [ ] Design direction contradicts user expectations
+> - [ ] Accessibility requirements conflict with brand vision
+> - [ ] Design ambitions exceed implementation capabilities
+
+---
+
 ## Design Philosophy
 
 ### Vision Statement

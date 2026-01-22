@@ -10,6 +10,60 @@ owner: product-manager
 
 # Product Requirements Document: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. Unclear answers indicate discovery gaps.
+
+### Problem Definition
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| Can we articulate the problem in one sentence that makes a stranger nod? | | |
+| What's the cost of NOT solving this (quantified in time/money/pain)? | | |
+| Are we solving the whole problem, or just a symptom? | | |
+
+### Scope & Focus
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What is the ONE thing this product must do exceptionally well to win? | | |
+| What features are we explicitly NOT building, and why? | | |
+| What's our MVP bar — functional, usable, or lovable? | | |
+
+### Success Metrics
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What single metric, if improved 10x, proves product-market fit? | | |
+| How will we know in 30 days if we're on the right track? | | |
+| What user behavior indicates they "get it" without being told? | | |
+
+### Prioritization Logic
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| For each feature: acquisition, activation, retention, or revenue impact? | | |
+| Are we building highest-leverage features first? | | |
+| What would a competitor do to make our roadmap irrelevant? | | |
+
+### Risk Validation
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What assumption, if wrong, invalidates the entire product? | | |
+| Which features have highest technical risk? Should we prototype? | | |
+| What's the minimal path to proving/disproving our core hypothesis? | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] Can't articulate the problem clearly
+> - [ ] No measurable success metric defined
+> - [ ] Core hypothesis cannot be tested quickly
+> - [ ] ROI assumptions are unrealistic
+
+---
+
 ## Executive Summary
 
 {2-3 paragraph overview of the product, the problem it solves, and the opportunity}

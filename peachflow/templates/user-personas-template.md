@@ -10,6 +10,52 @@ owner: ux-researcher
 
 # User Personas: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. These drive user understanding beyond demographics.
+
+### User Identity
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| Who is our PRIMARY user — and who explicitly is NOT? | | |
+| What job is the user "hiring" this product to do? | | |
+| When they wake up stressed about this problem, what words do they use? | | |
+
+### Current Behavior
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| How do users currently solve this? (Be specific — even if "Excel + email + prayer") | | |
+| What workarounds have they invented? (These reveal unmet needs) | | |
+| What have they tried that failed? Why did those solutions disappoint? | | |
+
+### Switching Triggers
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What moment of frustration would push them to search for a new solution? | | |
+| What's the emotional "last straw" that motivates change? | | |
+| What fears or uncertainties would prevent them from adopting us? | | |
+
+### Success Definition
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| How does the user define success in their own words (not our metrics)? | | |
+| What would make them tell a colleague about this product? | | |
+| After one week of use, what should be measurably different in their life? | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] Can't find real users who are frustrated with current solutions
+> - [ ] Users' pain points are vague or hypothetical
+> - [ ] No clear "job to be done" articulated
+> - [ ] Switching barriers are higher than our differentiation
+
+---
+
 ## Overview
 
 {Brief overview of target user segments and research methodology}

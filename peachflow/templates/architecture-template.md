@@ -10,6 +10,68 @@ owner: software-architect
 
 # Architecture: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. Over-engineering is as dangerous as under-engineering.
+
+### Complexity Management
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What's the SIMPLEST architecture that solves the problem? | | |
+| What are we tempted to over-engineer, and why should we resist? | | |
+| Which "nice-to-have" technical features should be explicitly deferred? | | |
+
+### Scale Honesty
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What's the REALISTIC user load in Year 1? Month 1? | | |
+| Are we building for 100 users, 10K, or 1M? (This changes everything) | | |
+| What's the cost of premature optimization vs. cost of a rewrite later? | | |
+
+### Technology Selection
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| For each choice: What's the operational overhead? Who maintains at 3am? | | |
+| Do we have team expertise, or are we learning on the job? | | |
+| What's the "boring technology" choice vs. "exciting"? Why not boring? | | |
+
+### Integration Reality
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What existing systems MUST we integrate with? What can we defer? | | |
+| What's the auth model? How does this affect architecture? | | |
+| What third-party dependencies are we adding? What if they fail? | | |
+
+### Risk & Failure Modes
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What single point of failure would bring down the entire system? | | |
+| What happens when [database/API/service] goes down? | | |
+| What data loss scenario would be catastrophic? How do we prevent it? | | |
+
+### Future-Proofing vs YAGNI
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What decisions today would be expensive to change in 2 years? | | |
+| What decisions should we deliberately defer (not enough info)? | | |
+| Where do we need extensibility vs where can we "paint corners"? | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] Requires unproven or experimental technology
+> - [ ] Team lacks expertise in critical stack components
+> - [ ] No clear path to handling expected scale
+> - [ ] Integration requirements are unclear or impossible
+
+---
+
 ## Executive Summary
 
 {2-3 paragraph overview of the technical architecture and key decisions}

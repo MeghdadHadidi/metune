@@ -10,6 +10,52 @@ owner: ux-researcher
 
 # User Journeys: {Product Name}
 
+## Strategic Questions Checklist
+
+> **Instructions**: Before completing this document, ensure you can answer these fundamental questions. Journey mapping without these answers is guesswork.
+
+### Friction Points
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| Where in their current workflow do users experience the most friction? | | |
+| What single step, if eliminated, would have the biggest impact? | | |
+| What steps feel "necessary but painful" vs "obviously broken"? | | |
+
+### Time-to-Value
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What's the "aha moment" when a user realizes this product is valuable? | | |
+| What's the longest users will tolerate before getting value? | | |
+| Can we deliver the aha moment in the first session? | | |
+
+### Emotional Mapping
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| At which journey stage are users most likely to abandon? | | |
+| What moment could turn a satisfied user into an advocate? | | |
+| Where do we lose users to "I'll do this later" procrastination? | | |
+
+### Competitive Journey
+
+| Question | Answer | Confidence |
+|----------|--------|------------|
+| What does the journey look like with competitor products? | | |
+| Where in the journey can we dramatically outperform competitors? | | |
+| What journey steps do competitors make painful that we can eliminate? | | |
+
+### Kill-the-Project Check
+
+> **STOP if any of these are true:**
+> - [ ] Can't identify a clear aha moment
+> - [ ] Time-to-value exceeds user patience threshold
+> - [ ] Journey isn't meaningfully better than competitors
+> - [ ] Critical friction points require capabilities we don't have
+
+---
+
 ## Overview
 
 {Brief overview of the key user journeys and their importance}
