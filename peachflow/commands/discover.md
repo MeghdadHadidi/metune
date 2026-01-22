@@ -21,6 +21,66 @@ Discovery is the foundation of successful product development. This phase produc
 
 **No git branch is created during discovery.** The output informs quarterly planning.
 
+---
+
+## IMPORTANT: Existing Project Support
+
+### If No Prompt Argument Provided
+
+Before starting discovery, check for an analyze report:
+
+```bash
+# Check if analyze-report.md exists
+if [ -f "specs/discovery/analyze-report.md" ]; then
+  echo "Found analyze report - using as discovery input"
+fi
+```
+
+**If `specs/discovery/analyze-report.md` exists:**
+1. Read the "Information for Discovery" section
+2. Use detected tech stack as **fixed constraints** (don't suggest alternatives)
+3. Use "Product Summary" as starting point for PRD
+4. Document "Existing Features" in PRD as already built
+5. Focus discovery efforts on "Gaps to Fill"
+6. Pre-resolve tech decisions that are already made
+
+**If no analyze-report.md and no prompt:**
+1. Ask user: "No product description provided and no analyze-report.md found. Please either:
+   - Provide a product description: `/peachflow:discover "your product idea"`
+   - Or run `/peachflow:analyze` first for existing projects"
+2. Do not proceed until input is provided
+
+### Existing Project Discovery Workflow
+
+When building on analyze-report.md:
+
+```
+analyze-report.md exists
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│  Read "Information for Discovery"       │
+│  - Product Summary                      │
+│  - Existing Tech Decisions              │
+│  - Existing Features                    │
+│  - Gaps to Fill                         │
+└─────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│  Lock-in Constraints                    │
+│  - Tech stack is FIXED                  │
+│  - Existing features are DONE           │
+│  - Focus on GAPS only                   │
+└─────────────────────────────────────────┘
+         │
+         ▼
+   Continue with normal workflow,
+   but with constraints applied
+```
+
+---
+
 ## Workflow
 
 Execute these phases sequentially, automatically invoking the appropriate agents:

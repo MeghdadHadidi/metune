@@ -18,18 +18,93 @@ Only pause and ask the user in these situations:
 2. **Context window concern** - If the conversation is getting long and starting a new task risks filling the context
 3. **Blocking error** - Task has unmet dependencies or critical failure
 4. **Quarter complete** - All tasks done
+5. **Clarification gate failed** - Unresolved [NEEDS CLARIFICATION] markers exist
 
 ## Prerequisites
 
 - Must be on a feature branch (quarter worktree)
 - `specs/quarterly/Q{XX}/tasks.md` exists
 - Plan phase complete
+- **No unresolved [NEEDS CLARIFICATION] markers in planning docs**
 
 ## Verification
 
 ```bash
 # Check we're on a feature branch
 git branch --show-current | grep -q "^[0-9]\{3\}-Q[0-9]"
+```
+
+---
+
+## CRITICAL: Clarification Gate
+
+**Before implementing ANY task, verify no unresolved clarifications exist in planning docs.**
+
+### Verification Step (REQUIRED)
+
+Run this check before starting implementation:
+
+```bash
+# Get current quarter from branch name
+QUARTER=$(git branch --show-current | grep -oE "Q[0-9]{2}")
+
+# Check for unresolved clarification markers in planning docs
+CLARIFICATION_COUNT=$(grep -rn "NEEDS CLARIFICATION" specs/quarterly/${QUARTER}/ 2>/dev/null | wc -l)
+
+# Also check discovery docs (in case something was missed)
+DISCOVERY_COUNT=$(grep -rn "NEEDS CLARIFICATION" specs/discovery/ 2>/dev/null | wc -l)
+
+TOTAL=$((CLARIFICATION_COUNT + DISCOVERY_COUNT))
+
+if [ "$TOTAL" -gt 0 ]; then
+  echo "BLOCKED: Found $TOTAL unresolved [NEEDS CLARIFICATION] markers"
+  exit 1
+fi
+```
+
+### If Clarifications Exist
+
+**DO NOT PROCEED WITH IMPLEMENTATION.**
+
+Instead, output:
+
+```markdown
+## ⛔ Implementation Blocked: Unresolved Clarifications
+
+Implementation cannot proceed until all `[NEEDS CLARIFICATION]` markers are resolved.
+
+### Unresolved Items Found
+
+#### In Planning Docs (specs/quarterly/Q{XX}/)
+| File | Line | Question |
+|------|------|----------|
+| specs/quarterly/Q01/tasks.md | 78 | [NEEDS CLARIFICATION: Should T005 use REST or GraphQL?] |
+| specs/quarterly/Q01/frontend-spec.md | 45 | [NEEDS CLARIFICATION: Dark mode in MVP or Phase 2?] |
+
+#### In Discovery Docs (specs/discovery/)
+| File | Line | Question |
+|------|------|----------|
+| specs/discovery/prd.md | 112 | [NEEDS CLARIFICATION: Priority of Feature X vs Y] |
+
+### Total Blockers: {N}
+
+### How to Resolve
+
+1. Run `/peachflow:clarify` to answer these questions interactively
+2. Or manually update the documents to replace `[NEEDS CLARIFICATION]` with decisions
+
+### After Resolution
+
+Once all items are resolved, run `/peachflow:implement {task}` again.
+```
+
+### Verification Output (Success)
+
+When proceeding, show briefly:
+
+```markdown
+✅ Clarification gate passed (0 blockers)
+→ Proceeding to implement T{XXX}
 ```
 
 ---

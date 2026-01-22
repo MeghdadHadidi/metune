@@ -19,6 +19,113 @@ Discovery phase complete:
 
 ---
 
+## CRITICAL: Clarification Gate
+
+**Before proceeding with planning, you MUST verify no unresolved clarifications exist.**
+
+### Verification Step (REQUIRED)
+
+```bash
+# Check for unresolved clarification markers in discovery docs
+CLARIFICATION_COUNT=$(grep -rn "NEEDS CLARIFICATION" specs/discovery/ 2>/dev/null | wc -l)
+
+if [ "$CLARIFICATION_COUNT" -gt 0 ]; then
+  echo "BLOCKED: Found $CLARIFICATION_COUNT unresolved [NEEDS CLARIFICATION] markers"
+  exit 1
+fi
+```
+
+### If Clarifications Exist
+
+**DO NOT PROCEED WITH PLANNING.**
+
+Instead, output:
+
+```markdown
+## ⛔ Planning Blocked: Unresolved Clarifications
+
+Planning cannot proceed until all `[NEEDS CLARIFICATION]` markers are resolved.
+
+### Unresolved Items Found
+
+| File | Line | Question |
+|------|------|----------|
+| specs/discovery/prd.md | 45 | [NEEDS CLARIFICATION: What is the monetization strategy?] |
+| specs/discovery/architecture.md | 112 | [NEEDS CLARIFICATION: What's the expected user scale?] |
+| ... | ... | ... |
+
+### How to Resolve
+
+1. Run `/peachflow:clarify` to answer these questions interactively
+2. Or manually update the documents to replace `[NEEDS CLARIFICATION]` with answers
+
+### After Resolution
+
+Once all items are resolved, run `/peachflow:plan` again.
+```
+
+### Verification Output (Success)
+
+When proceeding, show:
+
+```markdown
+## ✅ Clarification Gate Passed
+
+- Discovery documents scanned: 6 files
+- Unresolved clarifications: 0
+- Proceeding to planning phase...
+```
+
+---
+
+## IMPORTANT: Existing Project Considerations
+
+### When analyze-report.md Exists
+
+If `specs/discovery/analyze-report.md` exists, planning must:
+
+1. **Respect Existing Work**
+   - Don't re-plan features marked as "Implemented" in analyze-report.md
+   - Don't suggest changing existing architecture unless necessary
+   - Consider existing code as "Phase 0" that's already complete
+
+2. **Handle Migrations Carefully**
+   - If architecture changes are needed, mark as `[NEEDS CLARIFICATION]`
+   - Don't assume breaking changes are OK
+   - Let clarification-agent ask user about migration approach
+
+3. **Adjust Quarter Planning**
+   - Q01 may be smaller if significant work already exists
+   - Focus quarters on completing gaps, not rebuilding
+
+### Planning with Existing Code
+
+```markdown
+## Existing Work Assessment
+
+Before creating quarterly roadmap, acknowledge existing state:
+
+### Already Complete (from analyze-report.md)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| User Auth | Complete | OAuth + email login |
+| Dashboard | Partial | Needs polish |
+
+### Do Not Re-Plan
+These items exist and work - skip in quarterly planning:
+- {feature 1}
+- {feature 2}
+
+### Migration Decisions Required
+[NEEDS CLARIFICATION: The following changes would affect existing code]
+
+| Change | Why | Impact | Options |
+|--------|-----|--------|---------|
+| {change} | {reason} | {impact} | {options} |
+```
+
+---
+
 ## Mode 1: Master Quarterly Roadmap
 
 ### When Called
