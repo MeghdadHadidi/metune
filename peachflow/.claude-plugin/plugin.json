@@ -1,6 +1,6 @@
 {
   "name": "peachflow",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Professional product development workflow with discovery, quarterly planning, POC, implementation, and testing phases. Follows SDD approach. Features collaborative AI agents simulating a real software team.",
   "author": {
     "name": "Peachflow",
