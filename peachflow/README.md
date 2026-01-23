@@ -273,6 +273,47 @@ scripts/checklist-manager.sh check "docs/.../001.md" "endpoint created"
 scripts/checklist-manager.sh count "docs/.../001.md"
 ```
 
+### git-helper.sh
+
+Git operations for branch and worktree management:
+
+```bash
+# Branch checks
+scripts/git-helper.sh is-main           # true if on main/master
+scripts/git-helper.sh branch            # Get current branch name
+scripts/git-helper.sh has-changes       # true if uncommitted changes
+scripts/git-helper.sh is-clean          # true if working tree clean
+
+# Change analysis
+scripts/git-helper.sh list-changes      # List all changed files
+scripts/git-helper.sh diff-summary      # Summary for commit message
+scripts/git-helper.sh branch-commits    # Commits since branching
+scripts/git-helper.sh branch-files      # Files changed since branching
+
+# Worktree management
+scripts/git-helper.sh list-worktrees              # List all worktrees
+scripts/git-helper.sh create-worktree q01         # Create worktree for quarter
+scripts/git-helper.sh remove-worktree ../proj-q01 # Remove worktree
+scripts/git-helper.sh extract-quarter             # Extract quarter from branch
+```
+
+### state-manager.sh (extended)
+
+Additional quarter management:
+
+```bash
+# Quarter status
+scripts/state-manager.sh get-quarter-status q01   # pending|in_progress|completed
+scripts/state-manager.sh set-quarter-status q01 completed
+scripts/state-manager.sh get-next-quarter q01     # Returns q02
+scripts/state-manager.sh get-quarter-progress q01 # Returns completed/total:in_progress:pending
+scripts/state-manager.sh list-quarters            # List all quarters with status
+
+# Worktree tracking
+scripts/state-manager.sh set-worktree q01 ../proj-q01
+scripts/state-manager.sh get-worktree q01
+```
+
 ## Decision Workflow
 
 Architecture and planning decisions follow a draft-review-finalize workflow:
@@ -283,6 +324,25 @@ Architecture and planning decisions follow a draft-review-finalize workflow:
 4. **Document** - ADR or plan updated with final decision
 
 Decisions stored in `docs/decisions.json` and exported to `docs/decision-log.md`.
+
+## Implementation Workflow
+
+The `/peachflow:implement` command uses smart branch detection:
+
+### On Main Branch
+1. Check for uncommitted changes
+2. If changes exist: generate commit message, ask user to commit manually
+3. If clean: check quarter progress
+4. If quarter complete: transition to next quarter
+5. Create worktree for new quarter work
+
+### On Feature Branch
+1. Check for remaining tasks
+2. If tasks remain: continue implementation
+3. If all complete: generate summary and commit message
+4. User commits and merges manually
+
+**Key principle**: Peachflow never auto-commits. Users maintain full control over their git history.
 
 ## Workflows
 
