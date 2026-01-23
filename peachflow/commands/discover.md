@@ -31,6 +31,18 @@ Peachflow is not initialized for this project.
 Run /peachflow:init first to set up the project.
 ```
 
+## Get Project Name
+
+**CRITICAL**: Always use the project name from state, not "Peachflow" or the plugin name.
+
+```bash
+# Get the project name to use in all documents
+PROJECT_NAME=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-project-name)
+echo "Discovering for: $PROJECT_NAME"
+```
+
+**All agents must use `$PROJECT_NAME` when referring to the product being built.**
+
 ## Two Modes of Operation
 
 ### Mode Detection

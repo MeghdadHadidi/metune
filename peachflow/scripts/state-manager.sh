@@ -5,7 +5,8 @@
 STATE_FILE=".peachflow-state.json"
 
 init_state() {
-  local project_type="${1:-new}"
+  local project_name="${1:-Untitled Project}"
+  local project_type="${2:-new}"
   local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
   if [ ! -f "$STATE_FILE" ]; then
@@ -13,6 +14,7 @@ init_state() {
 {
   "version": "2.0.0",
   "initialized": "$timestamp",
+  "projectName": "$project_name",
   "projectType": "$project_type",
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
@@ -31,9 +33,31 @@ init_state() {
   "lastUpdated": "$timestamp"
 }
 EOF
-    echo "State initialized"
+    echo "State initialized for '$project_name'"
   else
     echo "State file already exists"
+  fi
+}
+
+# Project name management
+get_project_name() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.projectName // "Untitled Project"' "$STATE_FILE"
+  else
+    echo "Untitled Project"
+  fi
+}
+
+set_project_name() {
+  local name="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".projectName = \"${name}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Project name set to '$name'"
+  else
+    echo "Error: State file not found"
+    exit 1
   fi
 }
 
@@ -305,7 +329,8 @@ get_requirements_summary() {
 
 show_status() {
   if [ -f "$STATE_FILE" ]; then
-    echo "=== peachflow Project Status ==="
+    project_name=$(jq -r '.projectName // "Untitled Project"' "$STATE_FILE")
+    echo "=== $project_name - Project Status ==="
     echo ""
     project_type=$(jq -r ".projectType // \"unknown\"" "$STATE_FILE")
     echo "Project Type: $project_type"
@@ -366,7 +391,13 @@ show_status() {
 # Main command handler
 case "$1" in
   init)
-    init_state "$2"
+    init_state "$2" "$3"
+    ;;
+  get-project-name)
+    get_project_name
+    ;;
+  set-project-name)
+    set_project_name "$2"
     ;;
   get-phase)
     get_phase_status "$2"
@@ -442,11 +473,15 @@ case "$1" in
   *)
     echo "Usage: state-manager.sh <command> [args]"
     echo ""
+    echo "Project Commands:"
+    echo "  init <name> [type]          Initialize state file (type: new|existing|continued)"
+    echo "  get-project-name            Get the project name"
+    echo "  set-project-name <name>     Set the project name"
+    echo "  status                      Show full project status"
+    echo ""
     echo "Phase Commands:"
-    echo "  init [type]                 Initialize state file (type: new|existing|continued)"
     echo "  get-phase <phase>           Get status of a phase"
     echo "  set-phase <phase> <status>  Set phase status"
-    echo "  status                      Show full project status"
     echo ""
     echo "Quarter Commands:"
     echo "  get-quarter                 Get current quarter"

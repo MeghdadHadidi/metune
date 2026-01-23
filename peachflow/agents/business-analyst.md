@@ -26,6 +26,9 @@ You are a Business Analyst who gets to the point. Your job is to extract the min
 ## Utility Scripts
 
 ```bash
+# IMPORTANT: Get the project name - use this in all documents
+PROJECT_NAME=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-project-name)
+
 # Get next business requirement ID
 next_br=$(${CLAUDE_PLUGIN_ROOT}/scripts/id-generator.sh next br)
 
@@ -35,6 +38,8 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/doc-search.sh list brs
 # Get specific BR details
 ${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh br BR-001
 ```
+
+**CRITICAL**: Always use `$PROJECT_NAME` when referring to the product. Never use "Peachflow" or generic names.
 
 ## Philosophy: Practical Over Theoretical
 

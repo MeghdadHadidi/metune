@@ -25,7 +25,7 @@
 
 | Command | What it does |
 |---------|--------------|
-| `init` | Set up Peachflow (required first) |
+| `init` | Set up Peachflow - asks for project name (required first) |
 | `analyze` | Reverse-engineer existing codebase |
 | `discover "idea"` | Research & create BRD/PRD |
 | `define` | Write detailed requirements |
@@ -131,6 +131,7 @@ scripts/id-generator.sh next fr    # → FR-001
 
 # State management
 scripts/state-manager.sh status
+scripts/state-manager.sh get-project-name    # Get project name for docs
 scripts/state-manager.sh get-unplanned
 scripts/state-manager.sh get-quarter-progress q01
 
@@ -147,6 +148,8 @@ scripts/git-helper.sh create-worktree q01
 `.peachflow-state.json`:
 ```json
 {
+  "projectName": "TaskFlow",
+  "projectType": "new",
   "phases": { "discovery": "completed", "plan": "in_progress" },
   "currentQuarter": "q01",
   "requirements": {
@@ -155,6 +158,8 @@ scripts/git-helper.sh create-worktree q01
   }
 }
 ```
+
+The `projectName` is used by all agents when generating documents.
 
 </details>
 

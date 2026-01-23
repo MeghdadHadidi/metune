@@ -33,29 +33,42 @@ Commands you can use:
 
 ## Initialization Workflow
 
-### Step 1: Determine Project Type
+### Step 1: Get Project Information
 
-Ask the user:
+Ask the user for project details:
 
 ```json
 {
-  "questions": [{
-    "question": "What type of project is this?",
-    "header": "Project Type",
-    "options": [
-      {"label": "New project (Recommended)", "description": "Starting from scratch, no existing code"},
-      {"label": "Existing codebase", "description": "Adding peachflow to a project already in development"},
-      {"label": "Continuing previous work", "description": "Resuming a peachflow project from backup/export"}
-    ],
-    "multiSelect": false
-  }]
+  "questions": [
+    {
+      "question": "What is the name of your project?",
+      "header": "Project Name",
+      "options": [
+        {"label": "Enter name", "description": "You'll type the project name (e.g., 'TaskFlow', 'ShopEase', 'DevHub')"}
+      ],
+      "multiSelect": false
+    },
+    {
+      "question": "What type of project is this?",
+      "header": "Project Type",
+      "options": [
+        {"label": "New project (Recommended)", "description": "Starting from scratch, no existing code"},
+        {"label": "Existing codebase", "description": "Adding peachflow to a project already in development"},
+        {"label": "Continuing previous work", "description": "Resuming a peachflow project from backup/export"}
+      ],
+      "multiSelect": false
+    }
+  ]
 }
 ```
+
+**IMPORTANT**: The project name will be used throughout all generated documents (BRD, PRD, architecture, etc.). Make sure to capture the exact name the user wants for their product/project.
 
 ### Step 2: Create State File
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh init
+# Use the project name provided by the user
+${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh init "ProjectName" "new|existing|continued"
 ```
 
 This creates `.peachflow-state.json`:
@@ -64,6 +77,7 @@ This creates `.peachflow-state.json`:
 {
   "version": "2.0.0",
   "initialized": "2024-01-15T10:30:00Z",
+  "projectName": "TaskFlow",
   "projectType": "new|existing|continued",
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
@@ -81,6 +95,8 @@ This creates `.peachflow-state.json`:
   "lastUpdated": null
 }
 ```
+
+**Note**: The `projectName` is used by all agents when generating documents. Always use this name (not "Peachflow" or the plugin name) when referring to the product being built.
 
 ### Step 3: Create Directory Structure
 
