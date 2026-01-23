@@ -1,18 +1,23 @@
 {
   "name": "peachflow",
-  "version": "1.5.1",
-  "description": "Professional product development workflow with discovery, quarterly planning, POC, implementation, and testing phases. Follows SDD approach. Features collaborative AI agents simulating a real software team.",
+  "version": "2.0.0",
+  "description": "Agentic SDLC - Full software development lifecycle management with collaborative AI agents simulating business analysts, designers, architects, and developers across Discovery, Definition, Design, Plan, Implement, and Clarification phases.",
   "author": {
     "name": "Peachflow",
     "url": "https://github.com/MeghdadHadidi/peachflow"
   },
   "license": "MIT",
   "keywords": [
+    "sdlc",
     "product-development",
-    "spec-driven",
-    "quarterly-planning",
-    "discovery",
     "agile",
-    "software-team"
+    "brd",
+    "prd",
+    "frd",
+    "requirements",
+    "ux-design",
+    "architecture",
+    "sprint-planning",
+    "agentic"
   ]
 }

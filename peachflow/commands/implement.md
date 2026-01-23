@@ -1,454 +1,201 @@
 ---
 name: peachflow:implement
-description: Execute implementation tasks from quarter plan. Works only on feature branches. Implements tasks sequentially with code review and commit checkpoints.
-argument-hint: "[task ID: T001 | 'next' for next task | 'phase 1' for entire phase]"
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion
+description: Execute implementation tasks from quarterly plan. Assigns tasks to frontend-developer, backend-developer, or devops-engineer based on tags. Supports parallel execution.
+argument-hint: "[task_id|next|all]"
+disable-model-invocation: true
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion
 ---
 
 # /peachflow:implement - Implementation Phase
 
-Execute tasks from the quarter's task breakdown with proper tagging, testing, and commit checkpoints.
-
-## Automatic Continuation
-
-**Proceed automatically to the next task without asking.** Do not prompt the user between tasks.
-
-Only pause and ask the user in these situations:
-1. **Phase completion** - Offer commit checkpoint
-2. **Context window concern** - If the conversation is getting long and starting a new task risks filling the context
-3. **Blocking error** - Task has unmet dependencies or critical failure
-4. **Quarter complete** - All tasks done
-5. **Clarification gate failed** - Unresolved [NEEDS CLARIFICATION] markers exist
+Execute implementation tasks from the quarterly plan with parallel agent support.
 
 ## Prerequisites
 
-- Must be on a feature branch (quarter worktree)
-- `specs/quarterly/Q{XX}/tasks.md` exists
-- Plan phase complete
-- **No unresolved [NEEDS CLARIFICATION] markers in planning docs**
+A quarterly plan must exist with tasks:
+- `/docs/04-plan/quarters/qXX/tasks/` contains task files
 
-## Verification
-
+Check current quarter:
 ```bash
-# Check we're on a feature branch
-git branch --show-current | grep -q "^[0-9]\{3\}-Q[0-9]"
+${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter
 ```
 
----
+## Arguments
 
-## CRITICAL: Clarification Gate
-
-**Before implementing ANY task, verify no unresolved clarifications exist in planning docs.**
-
-### Verification Step (REQUIRED)
-
-Run this check before starting implementation:
-
-```bash
-# Get current quarter from branch name
-QUARTER=$(git branch --show-current | grep -oE "Q[0-9]{2}")
-
-# Check for unresolved clarification markers in planning docs
-CLARIFICATION_COUNT=$(grep -rn "NEEDS CLARIFICATION" specs/quarterly/${QUARTER}/ 2>/dev/null | wc -l)
-
-# Also check discovery docs (in case something was missed)
-DISCOVERY_COUNT=$(grep -rn "NEEDS CLARIFICATION" specs/discovery/ 2>/dev/null | wc -l)
-
-TOTAL=$((CLARIFICATION_COUNT + DISCOVERY_COUNT))
-
-if [ "$TOTAL" -gt 0 ]; then
-  echo "BLOCKED: Found $TOTAL unresolved [NEEDS CLARIFICATION] markers"
-  exit 1
-fi
-```
-
-### If Clarifications Exist
-
-**DO NOT PROCEED WITH IMPLEMENTATION.**
-
-Instead, output:
-
-```markdown
-## ⛔ Implementation Blocked: Unresolved Clarifications
-
-Implementation cannot proceed until all `[NEEDS CLARIFICATION]` markers are resolved.
-
-### Unresolved Items Found
-
-#### In Planning Docs (specs/quarterly/Q{XX}/)
-| File | Line | Question |
-|------|------|----------|
-| specs/quarterly/Q01/tasks.md | 78 | [NEEDS CLARIFICATION: Should T005 use REST or GraphQL?] |
-| specs/quarterly/Q01/frontend-spec.md | 45 | [NEEDS CLARIFICATION: Dark mode in MVP or Phase 2?] |
-
-#### In Discovery Docs (specs/discovery/)
-| File | Line | Question |
-|------|------|----------|
-| specs/discovery/prd.md | 112 | [NEEDS CLARIFICATION: Priority of Feature X vs Y] |
-
-### Total Blockers: {N}
-
-### How to Resolve
-
-1. Run `/peachflow:clarify` to answer these questions interactively
-2. Or manually update the documents to replace `[NEEDS CLARIFICATION]` with decisions
-
-### After Resolution
-
-Once all items are resolved, run `/peachflow:implement {task}` again.
-```
-
-### Verification Output (Success)
-
-When proceeding, show briefly:
-
-```markdown
-✅ Clarification gate passed (0 blockers)
-→ Proceeding to implement T{XXX}
-```
-
----
+- **No argument**: Show available tasks and prompt for selection
+- **`T-NNN`**: Execute specific task
+- **`next`**: Execute next available task (not blocked, not completed)
+- **`all`**: Execute all remaining tasks (parallel where possible)
 
 ## Workflow
 
-### Task Selection
-
-```
-/peachflow:implement T001       # Specific task
-/peachflow:implement next       # Next pending task
-/peachflow:implement "phase 1"  # All tasks in phase 1
-```
-
-### Per-Task Flow
-
-```
-┌─────────────────────────────────────────┐
-│ 1. Load Task Specification              │
-│    - Read from tasks.md                 │
-│    - Check dependencies complete        │
-│    - Review related specs               │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│ 2. Implementation                       │
-│    - Create/modify files                │
-│    - Follow coding standards            │
-│    - Add proper tags                    │
-│    - Write tests                        │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│ 3. Cleanup                              │
-│    - Remove console.logs                │
-│    - Remove commented code              │
-│    - Run linter                         │
-│    - Format code                        │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│ 4. Code Review                          │
-│    - code-reviewer validates            │
-│    - Fix any critical issues            │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│ 5. CRITICAL: Mark Complete in tasks.md  │
-│    - Update Status: pending → complete  │
-│    - Check all acceptance criteria [x]  │
-│    - Update frontmatter: completed: N   │
-│    - Output completion summary          │
-└─────────────────────────────────────────┘
-```
-
-### Task Completion Requirement (CRITICAL)
-
-**You MUST update tasks.md before proceeding to the next task.**
-
-This is non-negotiable. After completing a task:
-
-1. **Update task status** in tasks.md:
-   ```markdown
-   - **Status**: complete  ← Change from "pending" or "in_progress"
-   ```
-
-2. **Check all acceptance criteria**:
-   ```markdown
-   - **Acceptance**:
-     - [x] Criterion 1  ← Mark with [x]
-     - [x] Criterion 2
-     - [x] Criterion 3
-   ```
-
-3. **Update frontmatter counter**:
-   ```yaml
-   completed: 3  ← Increment this number
-   ```
-
-**DO NOT proceed to the next task until tasks.md is updated.**
-
-### Parallel Task Handling
-
-If tasks can run in parallel (no conflicts):
-- Implement both sequentially
-- But don't wait for commit until both complete
-
----
-
-## Tagging Requirements
-
-### File-Level Tags
-
-Every new/modified file gets a header:
-
-```typescript
-/**
- * @peachflow Q01/E01/US001/T003
- * @description OAuth callback handler
- * @tags auth, oauth, google, api
- * @see specs/quarterly/Q01/tasks.md#T003
- */
-```
-
-### Code Block Tags
-
-Significant sections get inline tags:
-
-```typescript
-// @peachflow:T003 - Token validation
-function validateToken(token: string): TokenValidation {
-  // ...
-}
-
-// @peachflow:T003 - Session creation
-async function createSession(user: User): Promise<Session> {
-  // ...
-}
-```
-
----
-
-## Cleanup After Each Task
-
-**Auto-invoke**: qa-engineer + developer agents
-
-Checklist:
-- [ ] No console.log (except intentional)
-- [ ] No commented-out code
-- [ ] No unused imports
-- [ ] No TODO without ticket
-- [ ] Linter passes
-- [ ] Prettier formatted
-- [ ] Types complete (no `any`)
-
----
-
-## Phase Completion (Pause Point)
-
-**This is one of the few times to pause and ask the user.**
-
-When a phase completes:
-
-```
-Phase 1 complete
-      │
-      ▼
-┌─────────────────────────────────────────┐
-│ Output commit checkpoint with:          │
-│  - Summary of completed tasks           │
-│  - Git commands for user to run         │
-│  - Offer to continue or wait            │
-└─────────────────────────────────────────┘
-```
-
-Example output:
-```markdown
-## Phase 1 Complete ✓
-
-**Tasks**: T001, T002, T003 done
-**Files**: 12 changed (+450, -23)
-
-### Commit Commands
-```bash
-git add -A
-git commit -m "feat(Q01): complete Phase 1 - Setup
-
-- Initialize project structure
-- Set up database schema
-- Configure CI/CD
-
-@peachflow: Q01/Phase1/T001-T003"
-```
-
-**Continue to Phase 2?** (or commit first)
-```
-
----
-
-## Commit Checkpoint
-
-When a phase completes, prepare a commit message for the user to run manually.
-
-**DO NOT execute git commands. Prepare the message for the user.**
-
-```markdown
-## Commit Checkpoint: Phase {N}
-
-**Tasks Completed**: T001, T002, T003
-**Files Changed**: 12 files (+450, -23)
-
-### Changes Summary
-- Initialized project structure
-- Set up database schema
-- Configured CI/CD pipeline
-
-### Test Status
-- Unit: 15 passing
-- Integration: 5 passing
-- Coverage: 82%
-
----
-
-### Git Commands to Run
+### 1. Load Quarter Context
 
 ```bash
-# 1. Stage all changes
-git add -A
-
-# 2. Create commit with this message
-git commit -m "feat(Q01): complete Phase 1 - Setup
-
-- Initialize project with Vite + React + TypeScript
-- Set up PostgreSQL database with Prisma
-- Configure GitHub Actions CI/CD
-- Add initial design tokens
-
-@peachflow: Q01/Phase1/T001-T003"
+quarter=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter)
+tasks_dir="docs/04-plan/quarters/${quarter}/tasks"
 ```
 
-**Please run the commands above when ready, then confirm to continue.**
+### 2. Analyze Tasks
+
+Read all task files and categorize:
+- **Pending**: status: pending, no unfinished dependencies
+- **Blocked**: status: pending, has unfinished dependencies
+- **In Progress**: status: in_progress
+- **Completed**: status: completed
+
+### 3. Task Selection
+
+Based on argument:
+
+#### No Argument
+Show task status:
+```
+Available Tasks:
+  [FE] T-002: Build registration form (pending)
+  [BE] T-003: Implement login API (pending)
+  [DevOps] T-007: Set up email service (pending, parallel)
+
+Blocked Tasks:
+  [FE] T-004: Build login form (blocked by T-003)
+
+In Progress:
+  [BE] T-001: Implement registration API (in_progress)
+
+Which task would you like to work on?
 ```
 
----
+#### Specific Task (T-NNN)
+1. Check task exists
+2. Check not already completed
+3. Check dependencies met
+4. Execute task
 
-## Task Completion Output
+#### Next
+Find first available task (not blocked, not completed) and execute.
 
-```markdown
-## Task T003 Complete ✓
+#### All
+1. Identify all executable tasks
+2. Group by parallelism
+3. Launch parallel agents for independent tasks
 
-**Files Changed**:
-- CREATE: src/api/auth/oauth-callback.ts
-- CREATE: src/api/auth/__tests__/oauth-callback.test.ts
-- MODIFY: src/api/auth/index.ts
+### 4. Task Execution
 
-**Acceptance**: All criteria met ✓
-**Tests**: 6 passing ✓
-**tasks.md**: Updated ✓
+For each task:
 
----
-
-→ Continuing to T004: Create login UI component
-```
-
-**Note**: Output is concise. Automatically continue to next task without prompting.
-
----
-
-## Context Window Management
-
-If the conversation is getting long (many tasks completed), pause before starting a new task:
-
-```markdown
-## Context Check
-
-Completed 5 tasks in this session. Starting T006 may exceed context limits.
-
-**Options**:
-1. Continue in new session: `/peachflow:implement T006`
-2. Continue anyway (may truncate earlier context)
-```
-
-Signs to watch for:
-- Completed 4+ medium/large tasks in one session
-- Long code review discussions
-- Many file reads/writes
-
-When in doubt, offer to pause so user can start fresh session.
-
----
-
-## Error Handling
-
-If implementation fails:
-
-```markdown
-## Task T003 Blocked
-
-**Issue**: Cannot find dependency module
-
-**Details**:
-Task T003 depends on T002 (Create user model)
-but T002 is not marked complete.
-
-**Options**:
-1. Complete T002 first: `/peachflow:implement T002`
-2. Skip and continue: `/peachflow:implement T004`
-3. Mark T002 as complete if done: [Edit tasks.md]
-```
-
----
-
-## Input Examples
-
+1. **Read Task File**
 ```bash
-# Implement specific task
-/peachflow:implement T001
-
-# Implement next available task
-/peachflow:implement next
-
-# Implement all tasks in a phase
-/peachflow:implement "phase 1"
-/peachflow:implement phase1
-
-# Implement range
-/peachflow:implement T001-T005
-
-# Resume after pause
-/peachflow:implement resume
+task_file="docs/04-plan/quarters/${quarter}/tasks/NNN.md"
 ```
 
----
+2. **Determine Agent by Tag**
+- `[FE]` → frontend-developer
+- `[BE]` → backend-developer
+- `[DevOps]` → devops-engineer
+- `[Full]` → frontend-developer + backend-developer (sequential)
 
-## Collaboration Flow
-
-```
-/peachflow:implement next
-         │
-         ▼
-┌─────────────────────────────────┐
-│  Task Loop (automatic):         │
-│  Load → Implement → Cleanup →   │
-│  Review → Update tasks.md →     │
-│  Continue to next task          │
-└─────────────────────────────────┘
-         │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-[More      [Phase
-tasks in    complete]
- phase]        │
-    │          ▼
-    │    Commit checkpoint
-    │    (PAUSE & ask user)
-    │          │
-    ▼          ▼
- Continue   User commits,
- auto       then continue
+3. **Update Task Status**
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh status "$task_file" "in_progress"
 ```
 
-**Summary**: Auto-continue within phase. Pause only at phase end or context limit.
+4. **Invoke Agent**
+Pass task context to appropriate agent.
+
+5. **Agent Execution**
+Agent will:
+- Read task requirements
+- Consult design/architecture docs
+- Implement the feature
+- Mark acceptance criteria as done
+- Update task status to completed
+
+6. **Update Checklists**
+```bash
+# Mark task done in stories.md
+${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
+  "docs/04-plan/quarters/${quarter}/stories.md" "T-NNN"
+
+# Mark task done in plan.md
+${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
+  "docs/04-plan/quarters/${quarter}/plan.md" "T-NNN"
+```
+
+### 5. Parallel Execution
+
+When `all` argument or multiple independent tasks:
+
+1. **Identify Parallel Groups**
+```
+Group 1 (parallel):
+  - T-001 [BE]: Registration API
+  - T-002 [FE]: Registration form (parallel with T-001)
+  - T-007 [DevOps]: Email service
+
+Group 2 (after Group 1):
+  - T-003 [BE]: Login API (depends on T-001)
+
+Group 3 (after Group 2):
+  - T-004 [FE]: Login form (depends on T-003)
+```
+
+2. **Launch Parallel Agents**
+Use Task tool with multiple agent invocations for each parallel group.
+
+3. **Wait for Group Completion**
+Before starting next group.
+
+## Agent Routing
+
+| Tag | Agent | Model |
+|-----|-------|-------|
+| [FE] | frontend-developer | opus |
+| [BE] | backend-developer | opus |
+| [DevOps] | devops-engineer | sonnet |
+| [Full] | frontend + backend | opus |
+
+## Task Status Updates
+
+Update status in task frontmatter:
+- `pending` → Task not started
+- `in_progress` → Agent working on it
+- `completed` → All acceptance criteria met
+- `deferred` → Postponed to later
+
+## Output
+
+After task completion, show:
+```
+Task T-001 completed
+
+Acceptance Criteria:
+  [x] POST /api/users endpoint created
+  [x] Email validation implemented
+  [x] Password hashing with bcrypt
+  [x] Returns 201 on success
+
+Updated:
+  - docs/04-plan/quarters/q01/tasks/001.md (completed)
+  - docs/04-plan/quarters/q01/stories.md (task checked)
+  - docs/04-plan/quarters/q01/plan.md (task checked)
+
+Next available tasks:
+  [FE] T-002: Build registration form
+  [BE] T-003: Implement login API
+```
+
+## Finding Tasks by Tag
+
+To find all frontend tasks:
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh find-tagged \
+  "docs/04-plan/quarters/q01/tasks" "FE"
+```
+
+## Guidelines
+
+- **Check dependencies first**: Don't start blocked tasks
+- **Update status**: Always update task status
+- **Mark criteria done**: Check off acceptance criteria as completed
+- **Parallel when possible**: Launch independent tasks together
+- **Report blockers**: If task cannot complete, note why
