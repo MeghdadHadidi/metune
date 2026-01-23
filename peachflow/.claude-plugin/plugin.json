@@ -1,23 +1,21 @@
 {
   "name": "peachflow",
-  "version": "2.1.0",
-  "description": "Agentic SDLC - Full software development lifecycle management with collaborative AI agents simulating business analysts, designers, architects, and developers across Discovery, Definition, Design, Plan, Implement, and Clarification phases.",
+  "version": "2.2.0",
+  "description": "Your AI development team in a CLI. Orchestrates specialized agents through discovery, requirements, design, planning, and implementation phases.",
   "author": {
-    "name": "Peachflow",
+    "name": "peachflow",
     "url": "https://github.com/MeghdadHadidi/peachflow"
   },
   "license": "MIT",
   "keywords": [
     "sdlc",
+    "agentic",
+    "ai-team",
     "product-development",
-    "agile",
-    "brd",
-    "prd",
-    "frd",
     "requirements",
-    "ux-design",
     "architecture",
     "sprint-planning",
-    "agentic"
+    "brd",
+    "prd"
   ]
 }

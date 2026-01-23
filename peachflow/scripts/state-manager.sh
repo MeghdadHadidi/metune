@@ -5,10 +5,15 @@
 STATE_FILE=".peachflow-state.json"
 
 init_state() {
+  local project_type="${1:-new}"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
   if [ ! -f "$STATE_FILE" ]; then
-    cat > "$STATE_FILE" << 'EOF'
+    cat > "$STATE_FILE" << EOF
 {
   "version": "2.0.0",
+  "initialized": "$timestamp",
+  "projectType": "$project_type",
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
     "definition": { "status": "pending", "completedAt": null },
@@ -17,7 +22,13 @@ init_state() {
   },
   "currentQuarter": null,
   "quarters": {},
-  "lastUpdated": null
+  "requirements": {
+    "planned": [],
+    "unplanned": []
+  },
+  "features": [],
+  "planUpdates": [],
+  "lastUpdated": "$timestamp"
 }
 EOF
     echo "State initialized"
@@ -166,9 +177,138 @@ get_quarter_worktree() {
   fi
 }
 
+# Requirements tracking
+get_planned() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.requirements.planned // [] | .[]' "$STATE_FILE"
+  fi
+}
+
+get_unplanned() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.requirements.unplanned // [] | .[]' "$STATE_FILE"
+  fi
+}
+
+add_to_planned() {
+  local req_id="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    # Add to planned if not already there
+    jq "if (.requirements.planned | index(\"${req_id}\")) then . else .requirements.planned += [\"${req_id}\"] end | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Added '$req_id' to planned"
+  fi
+}
+
+add_to_unplanned() {
+  local req_id="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    # Add to unplanned if not already there and not in planned
+    jq "if ((.requirements.unplanned | index(\"${req_id}\")) or (.requirements.planned | index(\"${req_id}\"))) then . else .requirements.unplanned += [\"${req_id}\"] end | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Added '$req_id' to unplanned"
+  fi
+}
+
+move_to_planned() {
+  local req_id="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    # Remove from unplanned and add to planned
+    jq ".requirements.unplanned -= [\"${req_id}\"] | if (.requirements.planned | index(\"${req_id}\")) then . else .requirements.planned += [\"${req_id}\"] end | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Moved '$req_id' to planned"
+  fi
+}
+
+bulk_add_unplanned() {
+  # Reads requirement IDs from stdin, one per line
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local ids=$(cat)
+
+  if [ -f "$STATE_FILE" ] && [ -n "$ids" ]; then
+    for req_id in $ids; do
+      jq "if ((.requirements.unplanned | index(\"${req_id}\")) or (.requirements.planned | index(\"${req_id}\"))) then . else .requirements.unplanned += [\"${req_id}\"] end" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    done
+    jq ".lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Added requirements to unplanned"
+  fi
+}
+
+bulk_move_to_planned() {
+  # Reads requirement IDs from stdin, one per line
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local ids=$(cat)
+
+  if [ -f "$STATE_FILE" ] && [ -n "$ids" ]; then
+    for req_id in $ids; do
+      jq ".requirements.unplanned -= [\"${req_id}\"] | if (.requirements.planned | index(\"${req_id}\")) then . else .requirements.planned += [\"${req_id}\"] end" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    done
+    jq ".lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Moved requirements to planned"
+  fi
+}
+
+# Add plan update record
+add_plan_update() {
+  local added="$1"       # comma-separated list: BR-015,BR-016,F-020
+  local quarters="$2"    # comma-separated list: Q1,Q2
+  local migrations="$3"  # comma-separated list: M-001
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    # Convert comma-separated to JSON arrays
+    local added_json=$(echo "$added" | tr ',' '\n' | jq -R . | jq -s .)
+    local quarters_json=$(echo "$quarters" | tr ',' '\n' | jq -R . | jq -s .)
+    local migrations_json=$(echo "$migrations" | tr ',' '\n' | jq -R . | jq -s .)
+
+    jq ".planUpdates += [{\"date\": \"${timestamp}\", \"added\": ${added_json}, \"affectedQuarters\": ${quarters_json}, \"migrations\": ${migrations_json}}] | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Plan update recorded"
+  fi
+}
+
+# Feature tracking
+add_feature() {
+  local feature_id="$1"
+  local feature_name="$2"
+  local discovery_type="${3:-full}"  # full or feature
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".features += [{\"id\": \"${feature_id}\", \"name\": \"${feature_name}\", \"addedAt\": \"${timestamp}\", \"discoveryType\": \"${discovery_type}\", \"status\": \"unplanned\"}] | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Feature '$feature_id' added"
+  fi
+}
+
+set_feature_status() {
+  local feature_id="$1"
+  local status="$2"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    jq "(.features[] | select(.id == \"${feature_id}\")).status = \"${status}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Feature '$feature_id' status set to '$status'"
+  fi
+}
+
+get_requirements_summary() {
+  if [ -f "$STATE_FILE" ]; then
+    local planned=$(jq '.requirements.planned | length' "$STATE_FILE")
+    local unplanned=$(jq '.requirements.unplanned | length' "$STATE_FILE")
+    echo "planned:${planned},unplanned:${unplanned}"
+  else
+    echo "planned:0,unplanned:0"
+  fi
+}
+
 show_status() {
   if [ -f "$STATE_FILE" ]; then
-    echo "=== Peachflow Project Status ==="
+    echo "=== peachflow Project Status ==="
+    echo ""
+    project_type=$(jq -r ".projectType // \"unknown\"" "$STATE_FILE")
+    echo "Project Type: $project_type"
     echo ""
     echo "Phases:"
     for phase in discovery definition design plan; do
@@ -181,20 +321,52 @@ show_status() {
       echo "  $icon $phase: $status"
     done
     echo ""
+
+    # Requirements summary
+    planned=$(jq '.requirements.planned | length' "$STATE_FILE")
+    unplanned=$(jq '.requirements.unplanned | length' "$STATE_FILE")
+    echo "Requirements:"
+    echo "  Planned: $planned"
+    echo "  Unplanned: $unplanned"
+
+    if [ "$unplanned" -gt 0 ]; then
+      echo ""
+      echo "  Unplanned IDs:"
+      jq -r '.requirements.unplanned[]' "$STATE_FILE" | while read id; do
+        echo "    - $id"
+      done
+    fi
+
+    echo ""
     current=$(jq -r ".currentQuarter // \"none\"" "$STATE_FILE")
     echo "Current Quarter: $current"
+
+    # List quarters if any
+    if [ -d "docs/04-plan/quarters" ]; then
+      echo ""
+      echo "Quarters:"
+      for dir in docs/04-plan/quarters/q*/; do
+        if [ -d "$dir" ]; then
+          quarter=$(basename "$dir")
+          status=$(get_quarter_status "$quarter")
+          progress=$(get_quarter_progress "$quarter")
+          echo "  $quarter: $status ($progress)"
+        fi
+      done
+    fi
+
     echo ""
     last=$(jq -r ".lastUpdated // \"never\"" "$STATE_FILE")
     echo "Last Updated: $last"
   else
-    echo "No state file found. Run a phase command to initialize."
+    echo "No state file found. Run /peachflow:init to initialize."
   fi
 }
 
 # Main command handler
 case "$1" in
   init)
-    init_state
+    init_state "$2"
     ;;
   get-phase)
     get_phase_status "$2"
@@ -229,26 +401,80 @@ case "$1" in
   get-worktree)
     get_quarter_worktree "$2"
     ;;
+  # Requirements tracking
+  get-planned)
+    get_planned
+    ;;
+  get-unplanned)
+    get_unplanned
+    ;;
+  add-planned)
+    add_to_planned "$2"
+    ;;
+  add-unplanned)
+    add_to_unplanned "$2"
+    ;;
+  move-to-planned)
+    move_to_planned "$2"
+    ;;
+  bulk-add-unplanned)
+    bulk_add_unplanned
+    ;;
+  bulk-move-to-planned)
+    bulk_move_to_planned
+    ;;
+  add-plan-update)
+    add_plan_update "$2" "$3" "$4"
+    ;;
+  # Feature tracking
+  add-feature)
+    add_feature "$2" "$3" "$4"
+    ;;
+  set-feature-status)
+    set_feature_status "$2" "$3"
+    ;;
+  get-requirements-summary)
+    get_requirements_summary
+    ;;
   status)
     show_status
     ;;
   *)
     echo "Usage: state-manager.sh <command> [args]"
     echo ""
-    echo "Commands:"
-    echo "  init                        Initialize state file"
+    echo "Phase Commands:"
+    echo "  init [type]                 Initialize state file (type: new|existing|continued)"
     echo "  get-phase <phase>           Get status of a phase"
     echo "  set-phase <phase> <status>  Set phase status"
+    echo "  status                      Show full project status"
+    echo ""
+    echo "Quarter Commands:"
     echo "  get-quarter                 Get current quarter"
     echo "  set-quarter <quarter>       Set current quarter"
-    echo "  get-quarter-status <q>      Get quarter status (pending|in_progress|completed)"
+    echo "  get-quarter-status <q>      Get quarter status"
     echo "  set-quarter-status <q> <s>  Set quarter status"
     echo "  get-next-quarter <current>  Get next quarter ID"
-    echo "  get-quarter-progress <q>    Get completion stats (completed/total:in_progress:pending)"
+    echo "  get-quarter-progress <q>    Get completion stats"
     echo "  list-quarters               List all quarters with status"
     echo "  set-worktree <q> <path>     Set worktree path for quarter"
     echo "  get-worktree <q>            Get worktree path for quarter"
-    echo "  status                      Show full project status"
+    echo ""
+    echo "Requirements Commands:"
+    echo "  get-planned                 List all planned requirement IDs"
+    echo "  get-unplanned               List all unplanned requirement IDs"
+    echo "  add-planned <id>            Add requirement to planned list"
+    echo "  add-unplanned <id>          Add requirement to unplanned list"
+    echo "  move-to-planned <id>        Move requirement from unplanned to planned"
+    echo "  bulk-add-unplanned          Add multiple IDs to unplanned (stdin, one per line)"
+    echo "  bulk-move-to-planned        Move multiple IDs to planned (stdin, one per line)"
+    echo "  get-requirements-summary    Get planned/unplanned counts"
+    echo ""
+    echo "Feature Commands:"
+    echo "  add-feature <id> <name> [type]  Add feature (type: full|feature)"
+    echo "  set-feature-status <id> <s>     Set feature status"
+    echo ""
+    echo "Plan Update Commands:"
+    echo "  add-plan-update <added> <quarters> <migrations>  Record plan update"
     exit 1
     ;;
 esac

@@ -1,420 +1,163 @@
-# Peachflow 2 - Agentic SDLC
+# Peachflow
 
-A comprehensive Claude Code plugin that simulates a full software development team, managing the entire software development lifecycle from discovery to implementation.
+**Your AI development team in a CLI.** From idea to implementation, Peachflow orchestrates specialized agents through the entire software lifecycle.
 
-## Overview
+```
+  idea ──► discover ──► define ──► design ──► plan ──► implement ──► ship
+              │            │          │         │           │
+          analysts    requirements   UX &    roadmap    developers
+          research    engineers    architects  tasks    build code
+```
 
-Peachflow 2 provides an agentic team that handles:
-
-1. **Discovery** - Business analysis, market research, user research
-2. **Definition** - Functional and non-functional requirements
-3. **Design** - UX specifications, system architecture
-4. **Plan** - Quarterly roadmaps, user stories, task breakdowns
-5. **Implement** - Parallel task execution with specialized developers
-6. **Clarification** - Resolving ambiguities throughout all phases
-
-## Installation
-
-Add the plugin to your Claude Code configuration:
+## Quick Start
 
 ```bash
-claude --plugin-dir /path/to/peachflow
+# New project
+/peachflow:init
+/peachflow:discover "your product idea"
+
+# Existing project
+/peachflow:init
+/peachflow:analyze
 ```
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/peachflow:analyze` | Onboard existing project to peachflow |
-| `/peachflow:discover "idea"` | Start product discovery phase |
-| `/peachflow:define` | Define detailed requirements |
-| `/peachflow:design` | Create UX and architecture docs |
-| `/peachflow:plan` | Create quarterly roadmap |
-| `/peachflow:plan Q1` | Create detailed quarter plan |
-| `/peachflow:implement` | Execute implementation tasks |
-| `/peachflow:implement T-001` | Execute specific task |
-| `/peachflow:clarify` | Resolve pending questions |
-| `/peachflow:status` | Show project status |
+| Command | What it does |
+|---------|--------------|
+| `init` | Set up Peachflow (required first) |
+| `analyze` | Reverse-engineer existing codebase |
+| `discover "idea"` | Research & create BRD/PRD |
+| `define` | Write detailed requirements |
+| `design` | Create UX specs & architecture |
+| `plan` | Build quarterly roadmap |
+| `plan Q1` | Break quarter into tasks |
+| `implement` | Execute tasks with dev agents |
+| `clarify` | Resolve open questions |
+| `status` | Show progress |
 
-### Analyze Command (For Existing Projects)
+## The Team
 
-Use `/peachflow:analyze` to onboard an existing codebase to peachflow:
-
-```bash
-# In a project without peachflow setup
-/peachflow:analyze
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  DISCOVERY          DEFINITION        DESIGN         IMPLEMENT │
+│  ───────────        ──────────        ──────         ───────── │
+│  business-analyst   requirements-     ux-designer    frontend  │
+│  market-analyst     analyst           software-      backend   │
+│  user-researcher                      architect      devops    │
+│  product-manager                                               │
+│                                                                │
+│                    + clarification-agent (always available)    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-This command:
-1. **Scans the codebase** - Identifies tech stack, frameworks, structure
-2. **Reverse-discovers** - Creates BRD, PRD, architecture docs from code
-3. **Documents decisions** - Creates ADRs for existing technology choices
-4. **Finds technical debt** - Catalogs TODO/FIXME, security gaps, test coverage
-5. **Prepares for planning** - Sets up peachflow state for `/peachflow:plan`
+## How It Works
 
-Output includes:
-- `docs/analyze-report.md` - Comprehensive analysis summary
-- `docs/05-debt/` - Technical debt registry
-- Standard peachflow docs with `[INFERRED]` markers
+**New Project:**
+```
+init → discover → define → design → plan → plan Q1 → implement
+```
 
-## Agents
+**Existing Codebase:**
+```
+init → analyze → [plan or discover to add features] → implement
+```
 
-### Analysis Phase (Existing Projects)
-- **codebase-analyst** - Analyzes existing code, creates reverse-discovery docs
+**Adding Features Mid-Project:**
+```
+discover "new feature" → plan (incremental) → implement
+```
 
-### Discovery Phase
-- **business-analyst** - Creates BRD, stakeholder analysis
-- **market-analyst** - Market research, competitor analysis
-- **user-researcher** - User personas, journey maps
-- **product-manager** - Creates PRD, feature prioritization
-
-### Definition Phase
-- **requirements-analyst** - Creates FRD and NFRs
-
-### Design Phase
-- **ux-designer** - Creates all UX documentation
-- **software-architect** - Creates architecture and ADRs
-
-### Plan Phase
-- **product-manager** - Quarterly themes, user stories
-- **tech-lead** - Task breakdown, dependency mapping
-
-### Implementation Phase
-- **frontend-developer** - [FE] tagged tasks
-- **backend-developer** - [BE] tagged tasks
-- **devops-engineer** - [DevOps] tagged tasks
-
-### Throughout
-- **clarification-agent** - Resolves [NEEDS CLARIFICATION] markers
-
-## Document Structure
+## Output Structure
 
 ```
 docs/
-├── 01-business/
-│   └── BRD.md                # Business requirements
+├── 01-business/BRD.md          # Why we're building
 ├── 02-product/
-│   ├── PRD.md                # Product requirements
-│   ├── user-personas.md      # User personas
-│   ├── user-flows.md         # User journeys
-│   ├── ux/                   # UX documentation (11 docs)
-│   └── architecture/
-│       ├── high-level-design.md
-│       └── adr/              # Architecture Decision Records
-├── 03-requirements/
-│   ├── FRD.md                # Functional requirements
-│   └── NFRs.md               # Non-functional requirements
+│   ├── PRD.md                  # What we're building
+│   ├── user-personas.md        # Who we're building for
+│   ├── ux/                     # How it looks & feels
+│   └── architecture/           # How it's structured
+├── 03-requirements/            # Detailed specs (FR, NFR)
 ├── 04-plan/
-│   ├── plan.md               # Quarterly roadmap
-│   └── quarters/
-│       └── q01/
-│           ├── plan.md       # Quarter epics
-│           ├── stories.md    # User stories
-│           └── tasks/        # Individual task files
-├── 05-debt/                  # Technical debt (from analyze)
-│   ├── technical-debt.md     # Code quality issues
-│   ├── security-gaps.md      # Security findings
-│   └── test-coverage.md      # Test gaps
-├── analyze-report.md         # Analysis summary (from analyze)
-└── clarification.md          # Clarification log
+│   ├── plan.md                 # Quarterly roadmap
+│   └── quarters/q01/           # Tasks & stories
+└── 05-debt/                    # Technical debt tracking
 ```
 
-## ID Formats
+## Key Concepts
 
-| Type | Format | Example |
-|------|--------|---------|
-| Business Requirement | BR-XXX | BR-001 |
+| Concept | Format | Example |
+|---------|--------|---------|
+| Business Req | BR-XXX | BR-001 |
 | Feature | F-XXX | F-001 |
-| Functional Requirement | FR-XXX | FR-001 |
-| Non-Functional Requirement | NFR-XXX | NFR-001 |
+| Functional Req | FR-XXX | FR-001 |
 | Epic | E-XXX | E-001 |
 | User Story | US-XXX | US-001 |
 | Task | T-XXX | T-001 |
 
-## Task Tags
+**Task Tags:** `[FE]` frontend · `[BE]` backend · `[DevOps]` infra · `[Full]` full-stack
 
-Tasks are tagged for agent routing:
+**Markers:** `[NEEDS CLARIFICATION: ...]` · `[INFERRED: ...]` · `[DEBT: ...]`
 
-| Tag | Agent | Work Type |
-|-----|-------|-----------|
-| [FE] | frontend-developer | UI, forms, client-side |
-| [BE] | backend-developer | APIs, database, services |
-| [DevOps] | devops-engineer | CI/CD, infrastructure |
-| [Full] | frontend + backend | Full-stack work |
+## Incremental Planning
 
-## State Management
+Peachflow tracks requirements as **planned** or **unplanned**. When you add features mid-project:
 
-Project state is tracked in `.peachflow-state.json`:
-- Phase completion status
-- Current quarter
-- Last update timestamps
+1. `discover "new feature"` → adds to unplanned
+2. `plan` → shows impact, asks where to place
+3. Creates migration tasks if needed
 
-Check status with `/peachflow:status`.
+## Git Workflow
 
-## Utility Scripts
+Peachflow **never auto-commits**. On implementation:
+- **Main branch:** Prompts to commit, then creates worktree for quarter
+- **Feature branch:** Continues work, summarizes when complete
 
-Agents use utility scripts to reduce LLM calls and enable local document operations.
+---
 
-### doc-search.sh
-
-Search and list documents:
+<details>
+<summary><b>Utility Scripts Reference</b></summary>
 
 ```bash
-# Search by ID (BR, FR, NFR, E, US, T, etc.)
+# Search & parse docs
 scripts/doc-search.sh id FR-001
-
-# Search by keyword
-scripts/doc-search.sh keyword "authentication" requirements
-scripts/doc-search.sh keyword "NEEDS CLARIFICATION" docs
-
-# List items by type and status
-scripts/doc-search.sh list tasks pending
-scripts/doc-search.sh list frs
-scripts/doc-search.sh list nfrs
-scripts/doc-search.sh list adrs
-
-# Find items by tag
-scripts/doc-search.sh tag FE
-scripts/doc-search.sh tag BE
-
-# Show task dependencies
-scripts/doc-search.sh deps T-001
-
-# Find related items
-scripts/doc-search.sh related FR-001
-```
-
-### doc-parser.sh
-
-Extract structured data from documents:
-
-```bash
-# Get specific items
-scripts/doc-parser.sh fr FR-001
-scripts/doc-parser.sh nfr NFR-001
+scripts/doc-search.sh keyword "auth" requirements
 scripts/doc-parser.sh task T-001
-scripts/doc-parser.sh story US-001
-scripts/doc-parser.sh adr 0001
-
-# Get acceptance criteria
-scripts/doc-parser.sh acceptance T-001
-
-# Count items
 scripts/doc-parser.sh count frs
-scripts/doc-parser.sh count tasks
 
-# List all IDs of type
-scripts/doc-parser.sh ids frs
+# Generate IDs
+scripts/id-generator.sh next fr    # → FR-001
+
+# State management
+scripts/state-manager.sh status
+scripts/state-manager.sh get-unplanned
+scripts/state-manager.sh get-quarter-progress q01
+
+# Git helpers
+scripts/git-helper.sh is-main
+scripts/git-helper.sh create-worktree q01
 ```
 
-### id-generator.sh
+</details>
 
-Generate sequential IDs:
+<details>
+<summary><b>State File Structure</b></summary>
 
-```bash
-# Get next ID by type
-scripts/id-generator.sh next br   # BR-001, BR-002...
-scripts/id-generator.sh next fr   # FR-001, FR-002...
-scripts/id-generator.sh next nfr  # NFR-001, NFR-002...
-scripts/id-generator.sh next e    # E-001, E-002...
-scripts/id-generator.sh next us   # US-001, US-002...
-scripts/id-generator.sh next t    # T-001, T-002...
-scripts/id-generator.sh next dec  # DEC-001, DEC-002...
-
-# Get next ADR number
-scripts/id-generator.sh adr       # 0001, 0002...
-
-# Get next task filename
-scripts/id-generator.sh task-file q01  # 001.md, 002.md...
+`.peachflow-state.json`:
+```json
+{
+  "phases": { "discovery": "completed", "plan": "in_progress" },
+  "currentQuarter": "q01",
+  "requirements": {
+    "planned": ["BR-001", "F-001"],
+    "unplanned": ["F-020"]
+  }
+}
 ```
 
-### decision-manager.sh
+</details>
 
-Manage draft-review-finalize decision workflow:
+---
 
-```bash
-# Add draft decision
-scripts/decision-manager.sh add \
-  "DEC-001" \
-  "Technology" \
-  "Which database?" \
-  "PostgreSQL" \
-  '["MongoDB", "MySQL"]' \
-  "ACID compliance required" \
-  "architecture.md"
-
-# Finalize decision
-scripts/decision-manager.sh finalize "DEC-001" "PostgreSQL"
-
-# List decisions
-scripts/decision-manager.sh list pending
-scripts/decision-manager.sh list finalized
-
-# Generate interview format
-scripts/decision-manager.sh interview
-
-# Export to decision log
-scripts/decision-manager.sh export
-```
-
-### checklist-manager.sh
-
-Manage task checkboxes and status:
-
-```bash
-# Update task status
-scripts/checklist-manager.sh status "docs/.../001.md" "in_progress"
-scripts/checklist-manager.sh status "docs/.../001.md" "completed"
-
-# Check an acceptance criteria item
-scripts/checklist-manager.sh check "docs/.../001.md" "endpoint created"
-
-# Count checked/total items
-scripts/checklist-manager.sh count "docs/.../001.md"
-```
-
-### git-helper.sh
-
-Git operations for branch and worktree management:
-
-```bash
-# Branch checks
-scripts/git-helper.sh is-main           # true if on main/master
-scripts/git-helper.sh branch            # Get current branch name
-scripts/git-helper.sh has-changes       # true if uncommitted changes
-scripts/git-helper.sh is-clean          # true if working tree clean
-
-# Change analysis
-scripts/git-helper.sh list-changes      # List all changed files
-scripts/git-helper.sh diff-summary      # Summary for commit message
-scripts/git-helper.sh branch-commits    # Commits since branching
-scripts/git-helper.sh branch-files      # Files changed since branching
-
-# Worktree management
-scripts/git-helper.sh list-worktrees              # List all worktrees
-scripts/git-helper.sh create-worktree q01         # Create worktree for quarter
-scripts/git-helper.sh remove-worktree ../proj-q01 # Remove worktree
-scripts/git-helper.sh extract-quarter             # Extract quarter from branch
-```
-
-### state-manager.sh (extended)
-
-Additional quarter management:
-
-```bash
-# Quarter status
-scripts/state-manager.sh get-quarter-status q01   # pending|in_progress|completed
-scripts/state-manager.sh set-quarter-status q01 completed
-scripts/state-manager.sh get-next-quarter q01     # Returns q02
-scripts/state-manager.sh get-quarter-progress q01 # Returns completed/total:in_progress:pending
-scripts/state-manager.sh list-quarters            # List all quarters with status
-
-# Worktree tracking
-scripts/state-manager.sh set-worktree q01 ../proj-q01
-scripts/state-manager.sh get-worktree q01
-```
-
-## Decision Workflow
-
-Architecture and planning decisions follow a draft-review-finalize workflow:
-
-1. **Draft** - Agent creates decision with recommendation
-2. **Interview** - User presented with options, recommendation pre-selected
-3. **Finalize** - Decision updated based on user choice
-4. **Document** - ADR or plan updated with final decision
-
-Decisions stored in `docs/decisions.json` and exported to `docs/decision-log.md`.
-
-## Implementation Workflow
-
-The `/peachflow:implement` command uses smart branch detection:
-
-### On Main Branch
-1. Check for uncommitted changes
-2. If changes exist: generate commit message, ask user to commit manually
-3. If clean: check quarter progress
-4. If quarter complete: transition to next quarter
-5. Create worktree for new quarter work
-
-### On Feature Branch
-1. Check for remaining tasks
-2. If tasks remain: continue implementation
-3. If all complete: generate summary and commit message
-4. User commits and merges manually
-
-**Key principle**: Peachflow never auto-commits. Users maintain full control over their git history.
-
-## Workflows
-
-### New Project Workflow
-
-```
-/peachflow:discover "your product idea"
-         │
-         ▼
-  BRD.md, PRD.md, user-personas.md, user-flows.md
-         │
-         ▼
-/peachflow:define
-         │
-         ▼
-  FRD.md, NFRs.md
-         │
-         ▼
-/peachflow:design
-         │
-         ▼
-  UX docs (11), architecture, ADRs
-         │
-         ▼
-/peachflow:plan
-         │
-         ▼
-  plan.md (quarterly roadmap)
-         │
-         ▼
-/peachflow:plan Q1
-         │
-         ▼
-  q01/plan.md, stories.md, tasks/
-         │
-         ▼
-/peachflow:implement
-         │
-         ▼
-  Code implementation with parallel agents
-```
-
-### Existing Project Workflow
-
-```
-/peachflow:analyze
-         │
-         ▼
-  Scan codebase, detect tech stack
-         │
-         ▼
-  Generate: analyze-report.md, BRD.md, PRD.md,
-            architecture docs, ADRs, technical-debt.md
-         │
-         ▼
-  User validates findings
-         │
-         ▼
-/peachflow:plan (or /peachflow:discover to enhance)
-         │
-         ▼
-  Continue with standard workflow...
-```
-
-## Guidelines
-
-- **Don't over-document**: Each doc max 1-2 pages
-- **Bullet points over prose**: Keep content scannable
-- **Mark unknowns**: Use `[NEEDS CLARIFICATION: ...]`
-- **Trace everything**: Requirements link through chain
-- **Small tasks**: Each task completable in 1-2 days
-
-## License
-
-MIT
+MIT License
