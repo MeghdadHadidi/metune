@@ -66,7 +66,9 @@ const example = "code";
 ```
 ```
 
-## Clarification Markers
+## Document Markers
+
+### Clarification Needed
 
 When information is missing or uncertain:
 
@@ -81,6 +83,30 @@ Options:
 - JWT tokens
 - Session-based
 - OAuth only]
+```
+
+### Inferred Content (from analyze)
+
+When content is derived from code analysis rather than explicit requirements:
+
+```markdown
+[INFERRED: assumption based on existing user model]
+```
+
+### Technical Debt
+
+When code quality issues are identified:
+
+```markdown
+[DEBT: missing input validation on user endpoints]
+```
+
+### Functionality Gaps
+
+When incomplete or missing functionality is found:
+
+```markdown
+[GAP: email verification not implemented]
 ```
 
 ## ID Formats

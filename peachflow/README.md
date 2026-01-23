@@ -25,6 +25,7 @@ claude --plugin-dir /path/to/peachflow
 
 | Command | Description |
 |---------|-------------|
+| `/peachflow:analyze` | Onboard existing project to peachflow |
 | `/peachflow:discover "idea"` | Start product discovery phase |
 | `/peachflow:define` | Define detailed requirements |
 | `/peachflow:design` | Create UX and architecture docs |
@@ -35,7 +36,31 @@ claude --plugin-dir /path/to/peachflow
 | `/peachflow:clarify` | Resolve pending questions |
 | `/peachflow:status` | Show project status |
 
+### Analyze Command (For Existing Projects)
+
+Use `/peachflow:analyze` to onboard an existing codebase to peachflow:
+
+```bash
+# In a project without peachflow setup
+/peachflow:analyze
+```
+
+This command:
+1. **Scans the codebase** - Identifies tech stack, frameworks, structure
+2. **Reverse-discovers** - Creates BRD, PRD, architecture docs from code
+3. **Documents decisions** - Creates ADRs for existing technology choices
+4. **Finds technical debt** - Catalogs TODO/FIXME, security gaps, test coverage
+5. **Prepares for planning** - Sets up peachflow state for `/peachflow:plan`
+
+Output includes:
+- `docs/analyze-report.md` - Comprehensive analysis summary
+- `docs/05-debt/` - Technical debt registry
+- Standard peachflow docs with `[INFERRED]` markers
+
 ## Agents
+
+### Analysis Phase (Existing Projects)
+- **codebase-analyst** - Analyzes existing code, creates reverse-discovery docs
 
 ### Discovery Phase
 - **business-analyst** - Creates BRD, stakeholder analysis
@@ -86,6 +111,11 @@ docs/
 │           ├── plan.md       # Quarter epics
 │           ├── stories.md    # User stories
 │           └── tasks/        # Individual task files
+├── 05-debt/                  # Technical debt (from analyze)
+│   ├── technical-debt.md     # Code quality issues
+│   ├── security-gaps.md      # Security findings
+│   └── test-coverage.md      # Test gaps
+├── analyze-report.md         # Analysis summary (from analyze)
 └── clarification.md          # Clarification log
 ```
 
@@ -254,7 +284,9 @@ Architecture and planning decisions follow a draft-review-finalize workflow:
 
 Decisions stored in `docs/decisions.json` and exported to `docs/decision-log.md`.
 
-## Workflow
+## Workflows
+
+### New Project Workflow
 
 ```
 /peachflow:discover "your product idea"
@@ -291,6 +323,28 @@ Decisions stored in `docs/decisions.json` and exported to `docs/decision-log.md`
          │
          ▼
   Code implementation with parallel agents
+```
+
+### Existing Project Workflow
+
+```
+/peachflow:analyze
+         │
+         ▼
+  Scan codebase, detect tech stack
+         │
+         ▼
+  Generate: analyze-report.md, BRD.md, PRD.md,
+            architecture docs, ADRs, technical-debt.md
+         │
+         ▼
+  User validates findings
+         │
+         ▼
+/peachflow:plan (or /peachflow:discover to enhance)
+         │
+         ▼
+  Continue with standard workflow...
 ```
 
 ## Guidelines
