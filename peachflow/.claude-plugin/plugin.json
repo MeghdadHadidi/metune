@@ -1,6 +1,6 @@
 {
   "name": "peachflow",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Agentic SDLC - Full software development lifecycle management with collaborative AI agents simulating business analysts, designers, architects, and developers across Discovery, Definition, Design, Plan, Implement, and Clarification phases.",
   "author": {
     "name": "Peachflow",
