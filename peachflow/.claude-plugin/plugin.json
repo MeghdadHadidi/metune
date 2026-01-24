@@ -1,6 +1,6 @@
 {
   "name": "peachflow",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Your AI development team in a CLI. Orchestrates specialized agents through discovery, requirements, design, planning, and implementation phases.",
   "author": {
     "name": "peachflow",

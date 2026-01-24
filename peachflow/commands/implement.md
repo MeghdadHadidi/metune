@@ -46,46 +46,20 @@ If `current_branch` is `main` or `master`:
 ### A.1: Check for Uncommitted Changes
 
 ```bash
-if [ -n "$(git status --porcelain)" ]; then
-  echo "UNCOMMITTED_CHANGES"
-fi
+# Use git-helper script for clean detection
+has_changes=$(${CLAUDE_PLUGIN_ROOT}/scripts/git-helper.sh has-changes)
 ```
 
-**If uncommitted changes exist:**
+**If uncommitted changes exist (`has_changes` is "true"):**
 
-1. List the changes:
-```bash
-git status --short
-git diff --stat
+Show brief status and stop:
+```
+Uncommitted changes detected on main. Please commit before continuing.
+
+Run: git status
 ```
 
-2. Generate a commit message based on the changes (analyze the diff)
-
-3. Present to user:
-```
-You have uncommitted changes on main:
-
-Modified files:
-  - src/auth/login.ts
-  - src/components/LoginForm.tsx
-
-Suggested commit message:
----
-feat: implement login authentication flow
-
-- Add login API endpoint with JWT token generation
-- Create LoginForm component with validation
-- Add error handling for invalid credentials
----
-
-Please commit these changes manually and re-run /peachflow:implement
-
-Commands to run:
-  git add -A
-  git commit -m "feat: implement login authentication flow..."
-```
-
-4. **STOP** - Do not continue until user commits and re-runs.
+**STOP** - Do not continue until user commits and re-runs.
 
 ### A.2: Find Current/Next Quarter
 
@@ -191,51 +165,11 @@ Parse: `completed/total:in_progress:pending`
 
 If all tasks are done (`pending == 0` and `in_progress == 0`):
 
-1. Generate summary of completed work:
-```bash
-# List all completed tasks
-completed_tasks=$(grep -l "status: completed" docs/04-plan/quarters/${quarter}/tasks/*.md 2>/dev/null)
+```
+$quarter complete. Please commit and merge manually.
 ```
 
-2. Analyze what was implemented (read task titles and descriptions)
-
-3. Present summary and commit message:
-```
-All tasks for $quarter are complete!
-
-Summary of work completed:
-- T-001: [BE] User registration API
-- T-002: [FE] Registration form with validation
-- T-003: [BE] Login API with JWT
-- T-004: [FE] Login form
-- T-007: [DevOps] Email service integration
-
-Files changed:
-  [list key files modified]
-
-Suggested commit message:
----
-feat($quarter): complete user authentication system
-
-Implemented features:
-- User registration with email validation
-- Login with JWT token authentication
-- Password reset flow
-- Email notifications via SendGrid
-
-Tasks completed: T-001, T-002, T-003, T-004, T-007
-
-Co-Authored-By: Claude <noreply@anthropic.com>
----
-
-Please commit and merge this branch manually:
-  git add -A
-  git commit -m "feat($quarter): complete user authentication system..."
-  git checkout main
-  git merge $current_branch
-```
-
-4. **STOP** - Wait for user to commit and merge.
+**STOP** - Wait for user to commit and merge.
 
 ### B.4: Work In Progress
 
@@ -402,9 +336,8 @@ Use Task tool with multiple agent invocations for each parallel group.
 
 ## Guidelines
 
-- **Always check git status first**: Handle uncommitted changes before proceeding
+- **Always check git status first**: Detect uncommitted changes via script, not LLM
 - **Respect branch context**: Different workflows for main vs feature branches
-- **Generate commit messages**: Help user with clear, descriptive commits
 - **Never auto-commit**: User must manually commit to maintain control
 - **Update task status**: Always update status as work progresses
 - **Mark criteria done**: Check off acceptance criteria as completed
