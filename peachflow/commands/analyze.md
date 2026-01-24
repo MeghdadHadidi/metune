@@ -1,5 +1,5 @@
 ---
-name: analyze
+name: peachflow:analyze
 description: Analyze an existing codebase to onboard it to peachflow. Creates discovery documents based on implemented code and identifies technical debt.
 allowed_tools: Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion
 ---
