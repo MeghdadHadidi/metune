@@ -256,3 +256,23 @@ Work with:
 - **Tech Lead**: Validate feasibility, implementation approach
 - **Requirements Analyst**: Ensure architecture supports all NFRs
 - **Frontend/Backend Engineers**: Get implementation feedback
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created architecture documentation
+- docs/02-product/architecture/high-level-design.md
+- X ADRs created (docs/02-product/architecture/adr/)
+- Y decisions drafted, Z finalized
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what architecture is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to create the documents and register decisions, not narrate the process.

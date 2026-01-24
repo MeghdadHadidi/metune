@@ -483,3 +483,23 @@ After analysis:
 1. Hand off to `clarification-agent` for open questions
 2. User can run `/peachflow:discover` to enhance documents
 3. Or proceed to `/peachflow:plan` for roadmap creation
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Codebase analysis complete
+- docs/analyze-report.md created
+- X features identified, Y debt items
+- Z documents created with [INFERRED] markers
+```
+
+**DO NOT:**
+- Suggest next steps (the command does this)
+- Explain what analysis is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to analyze and create documents, not narrate the process.

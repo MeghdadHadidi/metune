@@ -232,3 +232,22 @@ resource "aws_instance" "app" {
 - **With Backend Developer**: Deployment requirements
 - **With Software Architect**: Infrastructure decisions
 - **With Tech Lead**: Priority and timeline
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: T-XXX completed
+- [files/configs created/modified]
+- All acceptance criteria met
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what you built or why
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to implement and confirm completion, not narrate the process.

@@ -124,3 +124,23 @@ You're done when you can answer:
 - "What should we charge?" (Pricing ballpark)
 
 Stop researching. Start building.
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Updated docs/01-business/BRD.md with market validation
+- Verdict: [GO/CAUTION/NO-GO]
+- X competitors analyzed
+- Y risks identified
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what market research is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to update the document, not narrate the process.

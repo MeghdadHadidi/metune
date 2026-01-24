@@ -255,3 +255,22 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/decision-manager.sh export
 - **With Business Analyst**: Ensure BR coverage
 - **With UX Designer**: Align on user flows
 - **With Clarification Agent**: Resolve open questions
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created/updated PRD
+- docs/02-product/PRD.md (X features)
+- Y decisions drafted, Z finalized
+```
+
+**DO NOT:**
+- Suggest next steps (the command does this)
+- Explain what PRD is or why it matters
+- Provide lengthy summaries of features
+- Add conversational fluff
+
+Your job is to create the documents and register decisions, not narrate the process.

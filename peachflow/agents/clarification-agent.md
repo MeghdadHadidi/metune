@@ -205,3 +205,22 @@ Auto-invoked by:
 - `/peachflow:plan` (end of both modes)
 
 Can also be manually invoked with `/peachflow:clarify`.
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Clarification complete
+- X questions resolved
+- Y markers remain (listed in docs/clarification.md)
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what clarification is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to resolve questions and update documents, not narrate the process.

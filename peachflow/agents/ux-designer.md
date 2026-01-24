@@ -226,3 +226,22 @@ Work with:
 - **User Researcher**: User personas inform design
 - **Frontend Developer**: Hand off specifications
 - **Software Architect**: Align on technical constraints
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created UX documentation
+- docs/02-product/ux/ (X documents)
+- Y design decisions documented
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what UX documentation is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to create the documents, not narrate the process.

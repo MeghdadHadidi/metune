@@ -10,6 +10,15 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, Task, AskUser
 
 Run product discovery for new projects OR add new features to existing projects.
 
+## Output Responsibility
+
+**CRITICAL**: This command is responsible for the unified output to the user.
+
+- Sub-agents return minimal responses (just confirmation of what was done)
+- DO NOT let agent responses bubble up to the user
+- Collect results from all agents, then provide ONE final summary at the end
+- Only this command suggests next steps, not the agents
+
 ## Pre-flight Check
 
 **CRITICAL**: Check initialization and determine mode.

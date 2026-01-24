@@ -360,3 +360,22 @@ Before marking task complete:
 - Don't "eyeball" spacing (use tokens)
 - Don't pick similar-but-different colors
 - Don't create new component variants without checking component-library.md
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: T-XXX completed
+- [files created/modified]
+- All acceptance criteria met
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what you built or why
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to implement and confirm completion, not narrate the process.

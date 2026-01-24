@@ -141,3 +141,22 @@ Flag with `[NEEDS CLARIFICATION: ...]` if:
 - You can't find real user voices for a claimed audience
 - Pain points seem manufactured, not real
 - User behaviors don't match business assumptions
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created user research docs
+- docs/02-product/user-personas.md (X personas)
+- docs/02-product/user-flows.md (Y journeys)
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what personas are
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to create the documents, not narrate the process.

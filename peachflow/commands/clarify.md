@@ -10,6 +10,15 @@ allowed-tools: Read, Write, Edit, Grep, Glob, AskUserQuestion, Bash
 
 Scan all project documents for unresolved questions and interview user to resolve them.
 
+## Output Responsibility
+
+**CRITICAL**: This command is responsible for the unified output to the user.
+
+- Sub-agents return minimal responses (just confirmation of what was done)
+- DO NOT let agent responses bubble up to the user
+- Collect results from all agents, then provide ONE final summary at the end
+- Only this command suggests next steps, not the agents
+
 ## Overview
 
 This command can be run at any time to:

@@ -8,6 +8,15 @@ allowed_tools: Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion
 
 Onboard an existing project to peachflow by analyzing the codebase and creating discovery documents based on what's already implemented.
 
+## Output Responsibility
+
+**CRITICAL**: This command is responsible for the unified output to the user.
+
+- Sub-agents return minimal responses (just confirmation of what was done)
+- DO NOT let agent responses bubble up to the user
+- Collect results from all agents, then provide ONE final summary at the end
+- Only this command suggests next steps, not the agents
+
 ## Pre-flight Check
 
 **CRITICAL**: This command should only run on projects WITHOUT existing peachflow setup.

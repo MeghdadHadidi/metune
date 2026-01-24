@@ -146,3 +146,22 @@ Stop and ask the user if you discover:
 - Competing stakeholder visions
 - Technical constraints that make core features impossible
 - Compliance requirements that weren't mentioned
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created docs/01-business/BRD.md
+- X business requirements (BR-001 to BR-XXX)
+- Y open questions marked
+```
+
+**DO NOT:**
+- Suggest next steps (the command does this)
+- Explain what BRD is or why it matters
+- Provide lengthy summaries of what you wrote
+- Add motivational or conversational fluff
+
+Your job is to create the document, not narrate the process.

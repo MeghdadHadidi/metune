@@ -221,3 +221,22 @@ throw new AppError(400, 'VALIDATION_ERROR', 'Email already exists');
 - **With DevOps Engineer**: Deployment requirements
 - **With Software Architect**: Validate approach
 - **With Tech Lead**: Report blockers
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: T-XXX completed
+- [files created/modified]
+- All acceptance criteria met
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what you built or why
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to implement and confirm completion, not narrate the process.

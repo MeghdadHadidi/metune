@@ -10,6 +10,15 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, Bash
 
 Create delivery plans with support for incremental planning when new features are added.
 
+## Output Responsibility
+
+**CRITICAL**: This command is responsible for the unified output to the user.
+
+- Sub-agents return minimal responses (just confirmation of what was done)
+- DO NOT let agent responses bubble up to the user
+- Collect results from all agents, then provide ONE final summary at the end
+- Only this command suggests next steps, not the agents
+
 ## Pre-flight Check
 
 **CRITICAL**: Check initialization and requirements status.

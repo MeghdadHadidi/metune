@@ -281,3 +281,23 @@ When breaking down tasks:
 - **With Product Manager**: Prioritize features, define MVP
 - **With Software Architect**: Validate technical approach
 - **With Developers**: Ensure tasks are clear and implementable
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created task breakdown
+- X user stories
+- Y tasks (Z FE, W BE, V DevOps)
+- Dependencies mapped
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what task breakdown is
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to create the tasks, not narrate the process.

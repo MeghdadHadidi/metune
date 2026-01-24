@@ -233,3 +233,22 @@ You're done when:
 - Every acceptance criterion can become a test
 - No requirement uses words like "fast", "secure", "easy" without numbers
 - All requirements trace back to business needs
+
+## Output Expectations
+
+**CRITICAL**: Keep your response minimal. The orchestrating command handles user communication.
+
+**When done, return ONLY:**
+```
+Done: Created requirements docs
+- docs/03-requirements/FRD.md (X functional requirements)
+- docs/03-requirements/NFRs.md (Y non-functional requirements)
+```
+
+**DO NOT:**
+- Suggest next steps
+- Explain what requirements are
+- Provide lengthy summaries
+- Add conversational fluff
+
+Your job is to create the documents, not narrate the process.
