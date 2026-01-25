@@ -394,6 +394,70 @@ Task(backend-developer, T-005)
 
 Wait for each batch to complete before starting the next batch within the same dependency group.
 
+### 4. Checkpoint After Every 2 Rounds
+
+**CRITICAL**: After completing 2 rounds (groups/batches) of task execution, STOP and ask the user before continuing.
+
+Track rounds completed in the session. A "round" = one batch of parallel agents completing.
+
+```
+rounds_completed = 0
+
+For each batch:
+  1. Launch agents
+  2. Wait for completion
+  3. rounds_completed += 1
+  4. If rounds_completed % 2 == 0 AND more tasks remain:
+     → CHECKPOINT: Ask user before continuing
+```
+
+**Checkpoint Prompt** (use AskUserQuestion):
+
+```json
+{
+  "questions": [
+    {
+      "question": "2 rounds completed. What would you like to do next?",
+      "header": "Continue?",
+      "options": [
+        {"label": "Continue with next tasks (Recommended)", "description": "Proceed to the next batch of tasks"},
+        {"label": "Pause and review", "description": "Stop here to review completed work before continuing"},
+        {"label": "Commit current progress", "description": "Stop to commit the changes made so far"},
+        {"label": "Switch to specific task", "description": "Pick a specific task to work on next"}
+      ],
+      "multiSelect": false
+    }
+  ]
+}
+```
+
+**Handle Response:**
+
+| Choice | Action |
+|--------|--------|
+| Continue with next tasks | Resume parallel execution |
+| Pause and review | Show summary of completed tasks, then STOP |
+| Commit current progress | Show `git status`, suggest commit message, then STOP |
+| Switch to specific task | Show available tasks, ask which one, execute single task |
+
+**Checkpoint Summary** (shown before the question):
+
+```
+Checkpoint: 2 rounds completed
+
+Completed this session:
+  [x] T-001 [BE]: Registration API
+  [x] T-002 [FE]: Registration form
+  [x] T-003 [BE]: Login API
+  [x] T-007 [DevOps]: Email service
+
+Progress: 4/12 tasks complete
+
+Remaining tasks:
+  Ready: T-004 [FE], T-005 [BE], T-008 [DevOps]
+  Blocked: T-006 (needs T-005)
+```
+
 ## Guidelines
 
 - **Always check git status first**: Detect uncommitted changes via script, not LLM
