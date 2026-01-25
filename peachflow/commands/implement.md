@@ -240,10 +240,11 @@ Find first available task (not blocked, not completed) and execute.
 
 For each task:
 
-1. **Read Task File**
+1. **Parse Task Data (Once)**
 ```bash
 task_file="docs/04-plan/quarters/${quarter}/tasks/NNN.md"
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh task T-NNN
+task_data=$(${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh task T-NNN)
+acceptance=$(${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh acceptance T-NNN)
 ```
 
 2. **Determine Agent by Tag**
@@ -257,18 +258,42 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh task T-NNN
 ${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh status "$task_file" "in_progress"
 ```
 
-4. **Invoke Agent**
-Pass task context to appropriate agent via Task tool.
+4. **Invoke Agent with Pre-Parsed Context**
+
+**CRITICAL**: Pass all task context in the prompt. Do NOT tell agent to read files.
+
+```markdown
+## Task Context (Pre-Parsed)
+
+**Task**: T-NNN
+**Title**: [FE] Build registration form
+**Story**: US-001 - User wants to register
+
+**Acceptance Criteria**:
+- [ ] Form renders with email and password fields
+- [ ] Validation shows inline errors
+- [ ] Submit calls POST /api/users
+
+**Paths for Status Updates**:
+- TASK_PATH: docs/04-plan/quarters/${quarter}/tasks/NNN.md
+- STORIES_PATH: docs/04-plan/quarters/${quarter}/stories.md
+- PLAN_PATH: docs/04-plan/quarters/${quarter}/plan.md
+- TASK_ID: T-NNN
+
+**Design Docs** (read only if specific details needed):
+- Component specs: docs/03-design/ux/component-library.md
+- Design tokens: docs/03-design/ux/design-system.md
+
+Implement this task. Use provided context directly.
+```
 
 5. **Agent Execution**
 Agent will:
-- Read task requirements
-- Consult design/architecture docs
+- Use provided context (no file re-reads)
 - Implement the feature
-- Mark acceptance criteria as done
 - Update task status to completed
 
-6. **Update Checklists**
+6. **Update Checklists** (after agent returns)
 ```bash
 # Mark task done in stories.md
 ${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
