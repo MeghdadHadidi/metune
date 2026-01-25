@@ -7,7 +7,13 @@ STATE_FILE=".peachflow-state.json"
 init_state() {
   local project_name="${1:-Untitled Project}"
   local project_type="${2:-new}"
+  local max_parallel="${3:-3}"
   local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  # Validate max_parallel is between 1 and 6
+  if [ "$max_parallel" -lt 1 ] 2>/dev/null || [ "$max_parallel" -gt 6 ] 2>/dev/null; then
+    max_parallel=3
+  fi
 
   if [ ! -f "$STATE_FILE" ]; then
     cat > "$STATE_FILE" << EOF
@@ -16,6 +22,7 @@ init_state() {
   "initialized": "$timestamp",
   "projectName": "$project_name",
   "projectType": "$project_type",
+  "maxParallelTasks": $max_parallel,
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
     "definition": { "status": "pending", "completedAt": null },
@@ -33,7 +40,7 @@ init_state() {
   "lastUpdated": "$timestamp"
 }
 EOF
-    echo "State initialized for '$project_name'"
+    echo "State initialized for '$project_name' (max parallel: $max_parallel)"
   else
     echo "State file already exists"
   fi
@@ -55,6 +62,34 @@ set_project_name() {
   if [ -f "$STATE_FILE" ]; then
     jq ".projectName = \"${name}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
     echo "Project name set to '$name'"
+  else
+    echo "Error: State file not found"
+    exit 1
+  fi
+}
+
+# Max parallel tasks management
+get_max_parallel() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.maxParallelTasks // 3' "$STATE_FILE"
+  else
+    echo "3"
+  fi
+}
+
+set_max_parallel() {
+  local max_parallel="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  # Validate range 1-6
+  if [ "$max_parallel" -lt 1 ] 2>/dev/null || [ "$max_parallel" -gt 6 ] 2>/dev/null; then
+    echo "Error: max parallel must be between 1 and 6"
+    exit 1
+  fi
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".maxParallelTasks = ${max_parallel} | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Max parallel tasks set to $max_parallel"
   else
     echo "Error: State file not found"
     exit 1
@@ -333,7 +368,9 @@ show_status() {
     echo "=== $project_name - Project Status ==="
     echo ""
     project_type=$(jq -r ".projectType // \"unknown\"" "$STATE_FILE")
+    max_parallel=$(jq -r ".maxParallelTasks // 3" "$STATE_FILE")
     echo "Project Type: $project_type"
+    echo "Max Parallel Tasks: $max_parallel"
     echo ""
     echo "Phases:"
     for phase in discovery definition design plan; do
@@ -391,7 +428,13 @@ show_status() {
 # Main command handler
 case "$1" in
   init)
-    init_state "$2" "$3"
+    init_state "$2" "$3" "$4"
+    ;;
+  get-max-parallel)
+    get_max_parallel
+    ;;
+  set-max-parallel)
+    set_max_parallel "$2"
     ;;
   get-project-name)
     get_project_name
@@ -474,10 +517,12 @@ case "$1" in
     echo "Usage: state-manager.sh <command> [args]"
     echo ""
     echo "Project Commands:"
-    echo "  init <name> [type]          Initialize state file (type: new|existing|continued)"
-    echo "  get-project-name            Get the project name"
-    echo "  set-project-name <name>     Set the project name"
-    echo "  status                      Show full project status"
+    echo "  init <name> [type] [parallel]  Initialize state (type: new|existing|continued, parallel: 1-6)"
+    echo "  get-project-name               Get the project name"
+    echo "  set-project-name <name>        Set the project name"
+    echo "  get-max-parallel               Get max parallel tasks (1-6)"
+    echo "  set-max-parallel <n>           Set max parallel tasks (1-6)"
+    echo "  status                         Show full project status"
     echo ""
     echo "Phase Commands:"
     echo "  get-phase <phase>           Get status of a phase"

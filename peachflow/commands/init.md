@@ -57,6 +57,18 @@ Ask the user for project details:
         {"label": "Continuing previous work", "description": "Resuming a peachflow project from backup/export"}
       ],
       "multiSelect": false
+    },
+    {
+      "question": "How many tasks should run in parallel during implementation?",
+      "header": "Parallelism",
+      "options": [
+        {"label": "3 (Recommended)", "description": "Balanced - good for most projects and machines"},
+        {"label": "1", "description": "Sequential - one task at a time, lowest resource usage"},
+        {"label": "2", "description": "Light parallel - two concurrent tasks"},
+        {"label": "4", "description": "More parallel - four concurrent tasks"},
+        {"label": "6", "description": "Maximum - six concurrent tasks, requires good hardware"}
+      ],
+      "multiSelect": false
     }
   ]
 }
@@ -68,8 +80,11 @@ Ask the user for project details:
 
 ```bash
 # Use the project name provided by the user
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh init "ProjectName" "new|existing|continued"
+# Parse the parallelism choice: "3 (Recommended)" -> 3, "1" -> 1, etc.
+${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh init "ProjectName" "new|existing|continued" "3"
 ```
+
+**Parsing parallelism**: Extract the number from the user's choice (e.g., "3 (Recommended)" → 3, "6" → 6). Valid range is 1-6.
 
 This creates `.peachflow-state.json`:
 
@@ -79,6 +94,7 @@ This creates `.peachflow-state.json`:
   "initialized": "2024-01-15T10:30:00Z",
   "projectName": "TaskFlow",
   "projectType": "new|existing|continued",
+  "maxParallelTasks": 3,
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
     "definition": { "status": "pending", "completedAt": null },
@@ -176,9 +192,15 @@ Created:
   ✓ Placeholder files
 
 Project type: [New/Existing/Continued]
+Max parallel tasks: [1-6]
 
 Next steps:
   [Appropriate next command based on project type]
+```
+
+**Note**: To change parallelism later, use:
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-max-parallel 4
 ```
 
 ## State File Location

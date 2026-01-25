@@ -340,24 +340,59 @@ Continue with /peachflow:implement next
 
 When `all` argument or multiple independent tasks:
 
-1. **Identify Parallel Groups**
+### 0. Get Max Parallel Setting
+
+```bash
+max_parallel=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-max-parallel)
+# Returns 1-6, defaults to 3
 ```
-Group 1 (parallel):
-  - T-001 [BE]: Registration API
-  - T-002 [FE]: Registration form
-  - T-007 [DevOps]: Email service
+
+### 1. Identify Parallel Groups
+
+Group independent tasks, respecting the `max_parallel` limit:
+
+```
+max_parallel: 3
+
+Group 1 (parallel, max 3):
+  Batch 1a: T-001 [BE], T-002 [FE], T-007 [DevOps]
 
 Group 2 (after Group 1):
-  - T-003 [BE]: Login API (depends on T-001)
+  Batch 2a: T-003 [BE] (depends on T-001)
 
 Group 3 (after Group 2):
-  - T-004 [FE]: Login form (depends on T-003)
+  Batch 3a: T-004 [FE] (depends on T-003)
 ```
 
-2. **Launch Parallel Agents**
-Use Task tool with multiple agent invocations for each parallel group.
+If more than `max_parallel` independent tasks exist, split into batches:
+```
+max_parallel: 2
+Independent tasks: T-001, T-002, T-007, T-008
 
-3. **Wait for Group Completion** before starting next group.
+Group 1:
+  Batch 1a: T-001, T-002  (first 2)
+  Batch 1b: T-007, T-008  (next 2, after 1a completes)
+```
+
+### 2. Launch Parallel Agents (Respecting Limit)
+
+**CRITICAL**: Never launch more than `max_parallel` agents simultaneously.
+
+```bash
+# Example: max_parallel=3, 5 independent tasks
+# Launch first batch of 3
+Task(frontend-developer, T-001)
+Task(backend-developer, T-002)
+Task(devops-engineer, T-003)
+# Wait for completion
+# Then launch remaining 2
+Task(frontend-developer, T-004)
+Task(backend-developer, T-005)
+```
+
+### 3. Wait for Batch Completion
+
+Wait for each batch to complete before starting the next batch within the same dependency group.
 
 ## Guidelines
 
