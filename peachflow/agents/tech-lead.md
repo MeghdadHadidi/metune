@@ -33,6 +33,27 @@ You are a Tech Lead responsible for technical planning and task breakdown. You b
 4. **Finalize** - Update decisions based on user input
 5. **Document** - Create tasks with finalized structure
 
+### Check Testing Configuration
+
+Before creating tasks, check project testing settings:
+
+```bash
+testing_strategy=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-testing-strategy)
+testing_intensity=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-testing-intensity)
+```
+
+**Apply testing to task breakdown:**
+- **none**: No test tasks needed
+- **tdd**: Create test task BEFORE implementation task
+- **bdd**: Create feature file task, then implementation
+- **atdd**: Create acceptance test task first
+- **test-last**: Create test task after implementation task
+
+**Intensity affects task scope:**
+- **essential**: Unit tests only
+- **smart**: Add integration test tasks
+- **intense**: Add E2E/Playwright test tasks
+
 ### Using Decision Manager for Technical Decisions
 
 ```bash

@@ -362,6 +362,37 @@ get_requirements_summary() {
   fi
 }
 
+# Testing configuration
+get_testing_strategy() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.testingStrategy // "none"' "$STATE_FILE"
+  else
+    echo "none"
+  fi
+}
+
+get_testing_intensity() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.testingIntensity // "none"' "$STATE_FILE"
+  else
+    echo "none"
+  fi
+}
+
+set_testing() {
+  local strategy="$1"
+  local intensity="$2"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".testingStrategy = \"${strategy}\" | .testingIntensity = \"${intensity}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Testing set to '$strategy' / '$intensity'"
+  else
+    echo "Error: State file not found"
+    exit 1
+  fi
+}
+
 show_status() {
   if [ -f "$STATE_FILE" ]; then
     project_name=$(jq -r '.projectName // "Untitled Project"' "$STATE_FILE")
@@ -369,8 +400,11 @@ show_status() {
     echo ""
     project_type=$(jq -r ".projectType // \"unknown\"" "$STATE_FILE")
     max_parallel=$(jq -r ".maxParallelTasks // 3" "$STATE_FILE")
+    testing_strategy=$(jq -r ".testingStrategy // \"none\"" "$STATE_FILE")
+    testing_intensity=$(jq -r ".testingIntensity // \"none\"" "$STATE_FILE")
     echo "Project Type: $project_type"
     echo "Max Parallel Tasks: $max_parallel"
+    echo "Testing: $testing_strategy / $testing_intensity"
     echo ""
     echo "Phases:"
     for phase in discovery definition design plan; do
@@ -510,6 +544,16 @@ case "$1" in
   get-requirements-summary)
     get_requirements_summary
     ;;
+  # Testing configuration
+  get-testing-strategy)
+    get_testing_strategy
+    ;;
+  get-testing-intensity)
+    get_testing_intensity
+    ;;
+  set-testing)
+    set_testing "$2" "$3"
+    ;;
   status)
     show_status
     ;;
@@ -555,6 +599,11 @@ case "$1" in
     echo ""
     echo "Plan Update Commands:"
     echo "  add-plan-update <added> <quarters> <migrations>  Record plan update"
+    echo ""
+    echo "Testing Configuration:"
+    echo "  get-testing-strategy        Get testing strategy (none|tdd|bdd|atdd|test-last)"
+    echo "  get-testing-intensity       Get testing intensity (none|essential|smart|intense)"
+    echo "  set-testing <strategy> <intensity>  Set both testing values"
     exit 1
     ;;
 esac
