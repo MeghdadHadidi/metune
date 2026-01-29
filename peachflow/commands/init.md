@@ -25,11 +25,19 @@ Use the EXACT question text, option labels, and descriptions from the schema. Do
 if [ -f ".peachflow-state.json" ]; then
   version=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('version', '2.0.0'))")
   echo "ALREADY_INITIALIZED version=$version"
+
+  # Check if v2 (version < 3.0.0)
+  major_version=$(echo "$version" | cut -d. -f1)
+  if [ "$major_version" -lt 3 ]; then
+    echo "V2_PROJECT_DETECTED"
+  fi
 fi
 ```
 
-**If already initialized (or called as /peachflow:config):** → Configuration Mode
-**If not initialized:** → Initialization Mode
+**Routing based on result:**
+- `V2_PROJECT_DETECTED` → Migration Mode (see Migration from v2 section)
+- `ALREADY_INITIALIZED version=3.x.x` (or called as /peachflow:config) → Configuration Mode
+- No state file → Initialization Mode
 
 ---
 
@@ -408,13 +416,112 @@ Git tracking: Yes
 
 If a v2 project is detected (version < 3.0.0):
 
+### Step 1: Show Migration Info
+
 ```
 Peachflow v2 project detected (version X.X.X).
 
-To migrate to v3:
-1. Your docs/ will be preserved
-2. Sprint/task files will be migrated to graph
-3. UX documentation will need manual conversion to skills
+Migration to v3 will:
+✓ Preserve your docs/ directory (BRD, PRD, ADRs)
+✓ Convert sprint/task markdown files to graph structure
+✓ Update state file format
 
-Would you like to migrate now?
+Note: UX documentation files in docs/03-ux/ will need manual
+conversion to design skills after migration.
 ```
+
+### Step 2: Ask User About Migration
+
+```json
+{
+  "question": "Would you like to migrate this project to v3?",
+  "header": "Migrate",
+  "options": [
+    {"label": "Yes, migrate now", "description": "Run migration and update project to v3"},
+    {"label": "No, keep v2", "description": "Continue using v2 format (no changes made)"}
+  ],
+  "multiSelect": false
+}
+```
+
+### Step 3: Handle User Choice
+
+**If "Yes, migrate now":**
+
+```bash
+# Run migration script with verbose output
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --verbose
+
+# Check if migration succeeded
+if [ $? -eq 0 ]; then
+  echo "MIGRATION_SUCCESS"
+else
+  echo "MIGRATION_FAILED"
+fi
+```
+
+**If migration successful:**
+
+Show migration summary and proceed to Configuration Mode to let user review/update settings.
+
+```
+Migration complete!
+
+Migrated:
+  - X epics
+  - Y user stories
+  - Z tasks
+  - W sprints
+
+Backup created: .peachflow-state.json.v2.backup
+
+Your docs/ have been preserved. Review and update settings below.
+```
+
+Then proceed to Configuration Mode (Step 2 onwards) to let user review the migrated settings.
+
+**If migration failed:**
+
+```
+Migration failed. Your original files have not been modified.
+
+Common issues:
+- Missing docs/04-plan/plan.md file
+- Malformed sprint files
+- Permission issues
+
+Run with --dry-run to see what would be migrated:
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --dry-run --verbose
+
+You can also continue using v2 or manually set up v3.
+```
+
+**If "No, keep v2":**
+
+```
+Keeping v2 format. No changes made.
+
+Note: Future versions of peachflow may require v3 format.
+Run /peachflow:init again when ready to migrate.
+```
+
+### Manual Migration
+
+Users can also run the migration script directly:
+
+```bash
+# Preview what will be migrated (no changes made)
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --dry-run --verbose
+
+# Run actual migration
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --verbose
+```
+
+### Post-Migration: UX Documentation
+
+After migration, UX documentation in `docs/03-ux/` needs manual conversion to design skills:
+
+1. Review existing UX docs in `docs/03-ux/`
+2. Run `/peachflow:design` to generate new design skills from templates
+3. Manually copy relevant patterns from old UX docs to new skills
+4. Delete `docs/03-ux/` when migration is complete
