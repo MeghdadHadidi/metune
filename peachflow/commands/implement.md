@@ -1,480 +1,469 @@
 ---
 name: peachflow:implement
-description: Execute implementation tasks from sprints. Accepts sprint id/index, quarter, or task id. Creates sprint-named worktrees for isolation.
-argument-hint: "[sprint01|S-001|Q1|T-001|next]"
+description: Execute implementation of the current sprint's tasks. Works within a sprint worktree, plans approach, implements tasks in order, and tracks progress in the graph. Uses plan mode for each task.
 disable-model-invocation: true
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Task, Bash, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList
 ---
 
-# /peachflow:implement - Implementation Phase
+# /peachflow:implement - Sprint Task Implementation
 
-Execute implementation tasks from sprint files with smart branch and worktree management.
+Execute implementation of tasks in the current sprint. This command operates within a sprint worktree and implements tasks systematically.
 
 ## Output Responsibility
 
-**CRITICAL**: This command is responsible for the unified output to the user.
+**CRITICAL**: This command is responsible for unified output to the user.
 
 - Sub-agents return minimal responses (just confirmation of what was done)
 - DO NOT let agent responses bubble up to the user
-- Collect results from all agents, then provide ONE final summary at the end
-- Only this command suggests next steps, not the agents
+- Collect results from all agents, then provide summaries at checkpoints
+- Only this command suggests next steps
 
-## Pre-flight Checks
-
-**CRITICAL**: Before doing anything else, run these checks.
-
-### Step 1: Check Git Status
+## Pre-flight Check
 
 ```bash
-current_branch=$(git branch --show-current)
-has_changes=$(${CLAUDE_PLUGIN_ROOT}/scripts/git-helper.sh has-changes)
-```
-
-### Step 2: Check Initialization
-
-```bash
-if [ ! -f ".peachflow-state.json" ]; then
-  echo "NOT_INITIALIZED"
-fi
-```
-
----
-
-## Argument Detection
-
-| Argument | Mode |
-|----------|------|
-| None | **Show Status** |
-| `sprint01` or `S-001` | **Sprint Mode** - Execute specific sprint |
-| `Q1`, `Q2`, etc. | **Quarter Mode** - Execute all sprints in quarter sequentially |
-| `T-001` | **Task Mode** - Execute single task |
-| `next` | **Auto Mode** - Find and execute next available task |
-
----
-
-## Mode 0: Show Status (No Argument)
-
-When called without arguments, show current implementation status.
-
-```bash
-quarter=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter)
-${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh list-sprints "$quarter"
-```
-
-Output:
-```
-Quarter: Q1
-Progress: 8/14 tasks complete
-
-Sprints:
-  S-001: Auth Foundation [completed] (5/5)
-  S-002: User Dashboard [in_progress] (3/5)
-  S-003: Settings & Profile [pending] (0/4)
-
-Ready tasks in current sprint:
-  - T-006: [FE] Dashboard activity feed
-  - T-007: [BE] Activity API endpoint
-
-Run: /peachflow:implement sprint02 (continue sprint)
-     /peachflow:implement T-006 (specific task)
-     /peachflow:implement next (auto-select)
-```
-
----
-
-## Mode 1: Sprint Mode
-
-Execute a specific sprint by name or ID.
-
-### Workflow
-
-#### Phase 1: Parse Sprint Argument
-
-```bash
-# Normalize sprint input (sprint01, sprint1, S-001 → sprint01)
-if [[ "$1" =~ ^S-([0-9]+)$ ]]; then
-  sprint_num=$(printf "%02d" "${BASH_REMATCH[1]}")
-  sprint="sprint${sprint_num}"
-elif [[ "$1" =~ ^sprint([0-9]+)$ ]]; then
-  sprint_num=$(printf "%02d" "${BASH_REMATCH[1]}")
-  sprint="sprint${sprint_num}"
-else
-  sprint="$1"
-fi
-
-quarter=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter)
-```
-
-#### Phase 2: Check Branch Context
-
-```bash
-current_branch=$(git branch --show-current)
-```
-
-**If on main/master:**
-
-1. Check for uncommitted changes:
-```bash
-has_changes=$(${CLAUDE_PLUGIN_ROOT}/scripts/git-helper.sh has-changes)
-if [ "$has_changes" = "true" ]; then
-  echo "Uncommitted changes. Commit first."
+# Check if we're in a worktree (not main working tree)
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "NOT_IN_GIT_REPO"
   exit 1
 fi
-```
 
-2. Create worktree for sprint:
-```bash
-# Get sprint name from file
-sprint_name=$(awk -F': ' '/^name:/ {gsub(/"/, "", $2); print $2}' "docs/04-plan/quarters/${quarter}/${sprint}.md")
-sprint_slug=$(echo "$sprint_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+# Check if this is a worktree
+worktree_root=$(git rev-parse --show-toplevel)
+main_worktree=$(git worktree list | head -1 | awk '{print $1}')
 
-branch_name="peachflow/${quarter}-${sprint}-${sprint_slug}"
-worktree_path="../${PWD##*/}-${quarter}-${sprint}"
-
-git worktree add -b "$branch_name" "$worktree_path"
-
-${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh set-status "$quarter" "$sprint" "in_progress"
-```
-
-Output:
-```
-Created worktree: $worktree_path
-Branch: $branch_name
-
-To continue:
-  cd $worktree_path
-  /peachflow:implement $sprint
-```
-
-**If on feature branch (worktree):**
-
-Continue to task execution within sprint.
-
-#### Phase 3: Sprint Task Execution
-
-```bash
-# Mark sprint as in progress
-${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh set-status "$quarter" "$sprint" "in_progress"
-
-# Get ready tasks
-ready_tasks=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh ready-tasks "$quarter" "$sprint")
-```
-
-Execute tasks following the parallel execution rules (see Task Execution section).
-
-#### Phase 4: Sprint Completion Check
-
-After each task batch:
-
-```bash
-is_complete=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh is-complete "$quarter" "$sprint")
-if [ "$is_complete" = "true" ]; then
-  ${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh set-status "$quarter" "$sprint" "completed"
+if [ "$worktree_root" = "$main_worktree" ]; then
+  echo "NOT_IN_WORKTREE"
+  exit 1
 fi
+
+# Find the graph file (in main worktree)
+graph_path="${main_worktree}/.peachflow-graph.json"
+state_path="${main_worktree}/.peachflow-state.json"
+
+if [ ! -f "$graph_path" ]; then
+  echo "GRAPH_NOT_FOUND"
+  exit 1
+fi
+
+# Get active sprint
+current_sprint=$(python3 -c "import json; print(json.load(open('$state_path')).get('currentSprint', ''))")
+
+if [ -z "$current_sprint" ]; then
+  echo "NO_ACTIVE_SPRINT"
+  exit 1
+fi
+
+echo "READY sprint=$current_sprint"
+```
+
+**If NOT in git repo:**
+```
+Not in a git repository. Navigate to a project directory first.
+```
+
+**If NOT in worktree:**
+```
+This command must be run from a sprint worktree.
+
+To start a sprint:
+  /peachflow:create-sprint
+
+Then switch to the worktree it creates.
+```
+
+**If no active sprint:**
+```
+No active sprint found.
+
+Run /peachflow:create-sprint first to create a sprint.
 ```
 
 ---
 
-## Mode 2: Quarter Mode
-
-Execute all sprints in a quarter sequentially, asking user before each new sprint.
-
-### Workflow
-
-#### Phase 1: Setup Quarter
+## Step 1: Load Sprint Context
 
 ```bash
-quarter=$(echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/^q/q0/' | sed 's/q0\([0-9][0-9]\)/q\1/')
+# Set graph path for peachflow-graph.py
+export PEACHFLOW_GRAPH_PATH="$graph_path"
 
-# Check for uncommitted changes on main
-if [ "$(git branch --show-current)" = "main" ]; then
-  has_changes=$(${CLAUDE_PLUGIN_ROOT}/scripts/git-helper.sh has-changes)
-  if [ "$has_changes" = "true" ]; then
-    echo "Uncommitted changes. Commit first."
-    exit 1
-  fi
-fi
+# Get sprint details
+sprint_info=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get sprint $current_sprint --format json)
 
-# Create worktree for quarter
-branch_name="peachflow/${quarter}"
-worktree_path="../${PWD##*/}-${quarter}"
-git worktree add -b "$branch_name" "$worktree_path"
+# Get tasks in this sprint
+sprint_tasks=$(echo "$sprint_info" | python3 -c "
+import json, sys
+sprint = json.load(sys.stdin)
+print(','.join(sprint['taskIds']))
+")
 
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-quarter "$quarter"
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-quarter-status "$quarter" "in_progress"
-```
-
-#### Phase 2: Sprint Loop
-
-```bash
-while true; do
-  # Get next incomplete sprint
-  next_sprint=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh next-sprint "$quarter")
-
-  if [ "$next_sprint" = "none" ]; then
-    echo "All sprints complete!"
-    break
-  fi
-
-  # Execute sprint tasks
-  # ... (same as Sprint Mode Phase 3)
-
-  # After sprint completes, ask user before next sprint
+# Get full task details
+for task_id in $(echo $sprint_tasks | tr ',' ' '); do
+  ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get task $task_id --format json
 done
 ```
 
-#### Phase 3: Between Sprints - User Checkpoint
+Parse the sprint and show status:
 
-After completing each sprint, use AskUserQuestion:
+```
+Sprint: S-001 - auth-foundation
+Quarter: Q1
+
+Tasks: 6 total
+  - 2 completed
+  - 1 in progress
+  - 3 pending
+
+Ready to work on:
+  [BE] T-003: Implement password hashing
+  [FE] T-005: Build login form
+  [DevOps] T-006: Configure session storage
+```
+
+---
+
+## Step 2: Get Ready Tasks
+
+Find tasks that can be worked on (pending, no blockers within sprint):
+
+```bash
+# Get ready tasks from this sprint
+ready_tasks=$(python3 -c "
+import json, sys, os
+
+graph_path = os.environ['PEACHFLOW_GRAPH_PATH']
+with open(graph_path) as f:
+    graph = json.load(f)
+
+sprint_id = '$current_sprint'
+sprint = graph['entities']['sprints'].get(sprint_id, {})
+task_ids = sprint.get('taskIds', [])
+
+ready = []
+for tid in task_ids:
+    task = graph['entities']['tasks'].get(tid, {})
+    if task.get('status') != 'pending':
+        continue
+    # Check dependencies
+    deps = graph['relationships']['task_dependencies'].get(tid, [])
+    blocked = False
+    for dep in deps:
+        dep_task = graph['entities']['tasks'].get(dep, {})
+        if dep_task.get('status') not in ['completed', 'skipped']:
+            blocked = True
+            break
+    if not blocked:
+        ready.append(task)
+
+print(json.dumps(ready))
+")
+```
+
+**If no ready tasks:**
+Check if sprint is complete or all tasks are blocked.
+
+---
+
+## Step 3: Enter Plan Mode for Implementation
+
+For each batch of parallel tasks, enter plan mode to design the implementation approach.
+
+**Use EnterPlanMode** to plan the implementation:
+
+```
+I will now plan the implementation approach for these tasks:
+
+[FE] T-003: Build login form component
+[BE] T-004: Create authentication API
+[DevOps] T-005: Set up JWT configuration
+
+This will involve:
+1. Reading relevant design skills for guidance
+2. Understanding the codebase structure
+3. Identifying files to create/modify
+4. Planning the implementation order
+```
+
+### In Plan Mode
+
+1. **Load Design Skills** (if any exist):
+   ```bash
+   ls .claude/skills/
+   # If design-system.md exists, load it
+   ```
+
+2. **Analyze Task Requirements**:
+   - Read the task chain to understand context
+   ```bash
+   export PEACHFLOW_GRAPH_PATH="$graph_path"
+   ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py chain T-003
+   ```
+   - Understand acceptance criteria from user story
+   - Identify technical requirements
+
+3. **Explore Codebase** (use Explore agent if needed):
+   - Find relevant existing files
+   - Understand patterns in use
+   - Identify integration points
+
+4. **Write Plan**:
+   - List files to create/modify
+   - Outline implementation steps
+   - Note any risks or clarifications needed
+
+5. **Exit Plan Mode** when plan is ready for approval.
+
+---
+
+## Step 4: Execute Implementation
+
+After plan approval, implement tasks systematically.
+
+### Create TodoWrite Tasks
+
+For each task in the sprint batch:
 
 ```json
 {
-  "questions": [{
-    "question": "Sprint complete. Next action?",
-    "header": "Continue?",
-    "options": [
-      {"label": "Continue to next sprint (Recommended)", "description": "Start the next sprint"},
-      {"label": "Commit and pause", "description": "Commit current work, continue later"},
-      {"label": "Review first", "description": "Review completed work before continuing"}
-    ],
-    "multiSelect": false
-  }]
+  "tasks": [
+    {
+      "subject": "[BE] T-003: Implement password hashing",
+      "description": "Add bcrypt hashing to user registration...",
+      "activeForm": "Implementing password hashing"
+    },
+    {
+      "subject": "[FE] T-005: Build login form",
+      "description": "Create React login form component...",
+      "activeForm": "Building login form"
+    }
+  ]
 }
 ```
 
-**If "Continue":** Mark sprint complete, start next sprint
-**If "Commit and pause":** Show commit summary, stop
-**If "Review first":** Show completed tasks summary, then ask again
+### Route to Appropriate Agents
 
----
-
-## Mode 3: Task Mode
-
-Execute a single specific task.
-
-### Workflow
-
-```bash
-task_id="$1"
-quarter=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter)
-
-# Find which sprint contains this task
-for sprint_file in docs/04-plan/quarters/${quarter}/sprint*.md; do
-  if grep -q "^### ${task_id}:" "$sprint_file"; then
-    sprint=$(basename "$sprint_file" .md)
-    break
-  fi
-done
-
-# Get task details
-${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh get-task "$quarter" "$task_id"
-```
-
-Then execute single task (see Task Execution section).
-
----
-
-## Mode 4: Auto Mode (next)
-
-Find and execute the next available task.
-
-```bash
-quarter=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-quarter)
-current_sprint=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh next-sprint "$quarter")
-
-if [ "$current_sprint" = "none" ]; then
-  echo "All sprints in $quarter complete!"
-  exit 0
-fi
-
-# Get first ready task
-ready_tasks=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh ready-tasks "$quarter" "$current_sprint")
-first_task=$(echo "$ready_tasks" | grep -oE "T-[0-9]+" | head -1)
-
-# Execute that task
-```
-
----
-
-## Task Execution
-
-Core task execution logic used by all modes.
-
-### 1. Load Task Context
-
-```bash
-task_data=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh get-task "$quarter" "$task_id")
-```
-
-### 2. Determine Agent by Tag
+Based on task tag, invoke the correct agent:
 
 | Tag | Agent |
 |-----|-------|
-| [FE] | frontend-developer |
-| [BE] | backend-developer |
-| [DevOps] | devops-engineer |
-| [Full] | frontend + backend (sequential) |
+| `[FE]` | frontend-developer |
+| `[BE]` | backend-developer |
+| `[DevOps]` | devops-engineer |
+| `[Full]` | frontend-developer, then backend-developer |
 
-### 3. Pre-Parsed Context for Agent
+**Agent Invocation Pattern:**
 
-**CRITICAL**: Pass all task context in the prompt. Do NOT tell agent to read files.
+```
+Invoke: backend-developer agent
 
-```markdown
-## Task Context (Pre-Parsed)
+Context:
+- Task: T-003 - Implement password hashing
+- Epic: E-001 - User Authentication (Q1)
+- Story: US-001 - User can create account
+- Acceptance: Password stored securely with bcrypt
 
-**Task**: T-001
-**Title**: [BE] Create user registration API
-**Description**: Implement POST /api/users endpoint with validation.
-**Sprint**: sprint01 (Auth Foundation)
+Design skills loaded: (if applicable)
+- design-system: Using color tokens for form styling
+- accessibility: ARIA labels for form fields
 
-**Story Reference**: US-001 (see stories.md for acceptance criteria)
+Implementation plan:
+[The plan from plan mode]
 
-**Paths for Status Updates**:
-- SPRINT_PATH: docs/04-plan/quarters/${quarter}/${sprint}.md
-- TASK_ID: T-001
-
-Implement this task. Mark complete when done.
+Instructions:
+1. Implement according to plan
+2. Add tracking comment to code
+3. Return: "Done: [files changed] - [summary]"
 ```
 
-### 4. Update Task Status
+### Code Tracking Comments
 
-After agent completes:
+Agents must add a single-line tracking comment to created/modified files:
+
+```javascript
+// peachflow: T-003 | E-001 | Q1
+```
+
+```python
+# peachflow: T-003 | E-001 | Q1
+```
+
+```html
+<!-- peachflow: T-003 | E-001 | Q1 -->
+```
+
+This enables tracing code back to requirements.
+
+---
+
+## Step 5: Mark Tasks Complete
+
+After each task is implemented:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh complete-task "$quarter" "$sprint" "$task_id"
+export PEACHFLOW_GRAPH_PATH="$graph_path"
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update task T-003 --status completed
 ```
 
 ---
 
-## Parallel Execution
+## Step 6: Progress Checkpoint
 
-When multiple independent tasks are available:
+After every 2 rounds of parallel execution (or max 4 tasks), show checkpoint:
 
-### Get Max Parallel Setting
+```
+Progress Checkpoint
+───────────────────────────────────────
+
+Sprint: S-001 - auth-foundation
+Completed this session: 4 tasks
+  ✓ [BE] T-003: Implement password hashing
+  ✓ [FE] T-005: Build login form
+  ✓ [DevOps] T-006: Configure session storage
+  ✓ [BE] T-004: Create authentication API
+
+Remaining: 2 tasks
+  ○ [FE] T-007: Add form validation
+  ○ [BE] T-008: Implement logout endpoint
+
+Continue? (y/n)
+```
+
+---
+
+## Step 7: Sprint Completion
+
+When all tasks in the sprint are complete:
 
 ```bash
-max_parallel=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-max-parallel)
+export PEACHFLOW_GRAPH_PATH="$graph_path"
+
+# Mark sprint complete
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update sprint $current_sprint --status completed
+
+# Update state
+python3 -c "
+import json
+from datetime import datetime, timezone
+
+with open('$state_path', 'r') as f:
+    state = json.load(f)
+
+state['currentSprint'] = None
+state['lastUpdated'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+with open('$state_path', 'w') as f:
+    json.dump(state, f, indent=2)
+"
+
+# Commit sprint completion
+git add -A
+git commit -m "$(cat <<'EOF'
+peachflow: Complete sprint $current_sprint
+
+Implemented tasks:
+- T-003: Implement password hashing
+- T-004: Create authentication API
+- T-005: Build login form
+- T-006: Configure session storage
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
 ```
 
-### Group Ready Tasks
+**Output:**
+```
+Sprint S-001 - auth-foundation complete!
+
+Summary:
+  ✓ 6 tasks implemented
+  ✓ 8 files created
+  ✓ 4 files modified
+  ✓ All changes committed
+
+Next steps:
+  1. Return to main branch: cd .. && cd [main-worktree]
+  2. Merge sprint: git merge sprint/s-001-auth-foundation
+  3. Start next sprint: /peachflow:create-sprint
+
+Or stay in worktree to review/test before merging.
+```
+
+---
+
+## Parallel Execution Model
+
+Get max parallel from state:
 
 ```bash
-ready_tasks=$(${CLAUDE_PLUGIN_ROOT}/scripts/sprint-manager.sh ready-tasks "$quarter" "$sprint")
+max_parallel=$(python3 -c "import json; print(json.load(open('$state_path')).get('maxParallelTasks', 3))")
 ```
 
-### Launch Parallel Agents
+### Parallel Task Groups
 
-**CRITICAL**: Never launch more than `max_parallel` agents simultaneously.
+Group ready tasks by compatibility:
+- Same type (all FE, or all BE) can run in parallel
+- Different types (FE + BE) can run in parallel if no file conflicts
+- `[Full]` tasks run sequentially
+
+### Execution Order
+
+1. Find all ready tasks
+2. Group into parallel batches (max `maxParallelTasks`)
+3. Execute batch via agents
+4. Mark completed
+5. Find newly unblocked tasks
+6. Repeat until sprint complete
+
+---
+
+## Error Handling
+
+### Task Failure
+
+If an agent cannot complete a task:
+
+```
+Task T-003 could not be completed.
+
+Reason: [error description]
+
+Options:
+1. Retry with different approach
+2. Skip task (mark as blocked)
+3. Add clarification request
+4. Stop implementation
+```
+
+If skipped:
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update task T-003 --status blocked
+```
+
+### Missing Dependencies
+
+If a task depends on something not in the sprint:
 
 ```bash
-# Example: max_parallel=3, 5 ready tasks
-# Batch 1: Launch first 3 tasks
-# Wait for completion
-# Batch 2: Launch remaining 2 tasks
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py depends blockers T-003
 ```
 
-### Checkpoint After 2 Rounds
-
-After completing 2 batches of parallel execution, use AskUserQuestion:
-
-```json
-{
-  "questions": [{
-    "question": "2 rounds completed. Continue?",
-    "header": "Continue?",
-    "options": [
-      {"label": "Continue (Recommended)", "description": "Proceed to next batch"},
-      {"label": "Pause and review", "description": "Stop to review work"},
-      {"label": "Commit progress", "description": "Commit changes so far"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-Show brief summary before question:
-```
-Completed: T-001, T-002, T-003, T-004
-Progress: 4/10 tasks in sprint
-Remaining: T-005, T-006 (ready), T-007 (blocked)
-```
+Show blockers and offer to pull them into current sprint or defer.
 
 ---
 
-## Agent Routing
+## Design Skills Integration
 
-| Tag | Agent | Model |
-|-----|-------|-------|
-| [FE] | frontend-developer | opus |
-| [BE] | backend-developer | opus |
-| [DevOps] | devops-engineer | sonnet |
-| [Full] | frontend + backend | opus |
+Before implementing FE tasks, check for design skills:
 
----
+```bash
+if [ -f ".claude/skills/design-system.md" ]; then
+  echo "Loading design-system skill"
+  # Pass to frontend-developer agent
+fi
 
-## Worktree Naming
-
-Worktrees are named to include sprint context:
-
-**Sprint-level worktree:**
-```
-../projectname-q01-sprint01/
-Branch: peachflow/q01-sprint01-auth-foundation
+if [ -f ".claude/skills/component-patterns.md" ]; then
+  echo "Loading component-patterns skill"
+fi
 ```
 
-**Quarter-level worktree:**
-```
-../projectname-q01/
-Branch: peachflow/q01
-```
-
----
-
-## Output Examples
-
-### Sprint Start
-```
-Starting sprint01: Auth Foundation
-
-Tasks: 5 (3 parallel in first batch)
-  - T-001 [BE]: Create user registration API
-  - T-002 [FE]: Build registration form
-  - T-003 [DevOps]: Configure email service
-  - T-004 [BE]: Implement login API (after T-001)
-  - T-005 [FE]: Build login form (after T-002, T-004)
-
-Launching T-001, T-002, T-003 in parallel...
-```
-
-### Task Completion
-```
-Completed: T-001 [BE] Create user registration API
-
-Sprint progress: 1/5
-Next ready: T-004 [BE] (was waiting on T-001)
-```
-
-### Sprint Completion
-```
-Sprint sprint01 complete!
-
-Completed tasks:
-  [x] T-001: Create user registration API
-  [x] T-002: Build registration form
-  [x] T-003: Configure email service
-  [x] T-004: Implement login API
-  [x] T-005: Build login form
-
-Ready for next sprint: sprint02 (User Dashboard)
-```
-
----
-
-## Guidelines
-
-- **Always check git status first**
-- **Respect branch context**: Different flows for main vs feature branches
-- **Never auto-commit**: User must commit manually
-- **Update sprint status**: Mark tasks and sprints as complete
-- **Parallel when possible**: Launch independent tasks together
-- **Ask before new sprint**: Always checkpoint between sprints
+Pass loaded skills to implementation agents so they follow design guidelines.

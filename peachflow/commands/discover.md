@@ -1,14 +1,14 @@
 ---
 name: peachflow:discover
-description: Start product discovery for new projects OR add new features/initiatives to existing projects. Creates BRD/PRD or extends existing documentation.
+description: Start product discovery for new projects OR add new features/initiatives to existing projects. Creates BRD/PRD and populates epics in the graph.
 argument-hint: "[product idea OR feature description]"
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, Task, AskUserQuestion, Bash
 ---
 
-# /peachflow:discover - Discovery Phase
+# /peachflow:discover - Discovery Phase (v3)
 
-Run product discovery for new projects OR add new features to existing projects.
+Run product discovery for new projects OR add new features to existing projects. Creates BRD, PRD, and initial epics in the graph.
 
 ## Output Responsibility
 
@@ -21,16 +21,21 @@ Run product discovery for new projects OR add new features to existing projects.
 
 ## Pre-flight Check
 
-**CRITICAL**: Check initialization and determine mode.
-
 ```bash
 # Check if peachflow is initialized
-if [ ! -f ".peachflow-state.json" ]; then
+if [ ! -f ".peachflow-state.json" ] || [ ! -f ".peachflow-graph.json" ]; then
   echo "NOT_INITIALIZED"
+  exit 1
 fi
 
-# Check if discovery was previously completed
-discovery_status=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-phase discovery)
+# Get version and check v3
+version=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('version', '2.0.0'))")
+if [[ ! "$version" == 3.* ]]; then
+  echo "VERSION_MISMATCH: Expected v3, got $version"
+fi
+
+# Check discovery status
+discovery_status=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['phases']['discovery']['status'])")
 ```
 
 **If NOT initialized:**
@@ -42,21 +47,14 @@ Run /peachflow:init first to set up the project.
 
 ## Get Project Name
 
-**CRITICAL**: Always use the project name from state, not "Peachflow" or the plugin name.
-
 ```bash
-# Get the project name to use in all documents
-PROJECT_NAME=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-project-name)
+PROJECT_NAME=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['projectName'])")
 echo "Discovering for: $PROJECT_NAME"
 ```
 
 **All agents must use `$PROJECT_NAME` when referring to the product being built.**
 
-## Two Modes of Operation
-
-### Mode Detection
-
-Based on discovery status:
+## Mode Detection
 
 | Condition | Mode |
 |-----------|------|
@@ -74,322 +72,251 @@ When discovery has never been run.
 #### Phase 0: Initialize
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-phase discovery in_progress
-mkdir -p docs/01-business docs/02-product docs/03-requirements docs/04-plan
+# Update state
+python3 -c "
+import json
+from datetime import datetime, timezone
+
+with open('.peachflow-state.json', 'r') as f:
+    state = json.load(f)
+
+state['phases']['discovery']['status'] = 'in_progress'
+state['lastUpdated'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+with open('.peachflow-state.json', 'w') as f:
+    json.dump(state, f, indent=2)
+"
+
+# Create doc directories
+mkdir -p docs/01-business docs/02-product docs/02-product/architecture/adr
 ```
 
 #### Phase 1: Business Analysis
 **Invoke**: business-analyst agent
 
-Creates `/docs/01-business/BRD.md` with:
+Provide context:
+- User's product idea (from arguments)
+- Project name from state
+
+The agent creates `/docs/01-business/BRD.md` with:
 - Problem statement
 - Business objectives
 - Stakeholders
 - Constraints
 - BR-XXX requirements
 
-#### Phase 2: Market Research
-**Invoke**: market-analyst agent
-
-Updates BRD with:
-- Market validation
-- Competitor analysis
-- Market gaps/opportunities
-
-#### Phase 3: User Research
-**Invoke**: user-researcher agent
-
-Creates:
-- `/docs/02-product/user-personas.md`
-- `/docs/02-product/user-flows.md`
-
-#### Phase 4: Product Definition
+#### Phase 2: Product Manager
 **Invoke**: product-manager agent
 
-Creates `/docs/02-product/PRD.md` with:
-- Feature set (F-XXX)
-- Priorities (Must/Should/Could/Won't)
-- Acceptance criteria
+Provide context:
+- The BRD just created
+- User's original product idea
 
-#### Phase 5: Clarification
-**Invoke**: clarification-agent
+The agent creates `/docs/02-product/PRD.md` with:
+- Product vision
+- Target users
+- Features (F-XXX)
+- Success metrics
 
-Resolves `[NEEDS CLARIFICATION]` markers.
-
-#### Phase 6: Finalize
+**Additionally**, the product manager populates initial epics in the graph:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-phase discovery completed
-
-# Track all requirements as unplanned (not yet in quarterly plan)
-# This will be read by /peachflow:plan
+# For each major feature, create an epic
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create epic \
+  --title "User Authentication" \
+  --quarter Q1 \
+  --priority 1 \
+  --description "Complete user authentication system including login, signup, and password recovery" \
+  --deliverables "Login,Signup,Password Reset,Session Management"
 ```
 
-Update state with discovered requirements:
+#### Phase 3: Check for Clarifications
+
+After discovery, scan for items needing clarification:
+
 ```bash
-# Extract BR IDs and F IDs from docs
-# Add them to state.requirements.unplanned[]
+# Check if any clarifications were created during discovery
+pending_cl=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --pending --format json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+
+if [ "$pending_cl" -gt "0" ]; then
+  echo "CLARIFICATIONS_NEEDED: $pending_cl"
+fi
 ```
 
-**Output:**
-```
-Discovery complete!
+If clarifications needed, output them to user and ask for answers.
 
-Created:
+#### Phase 4: Finalize
+
+```bash
+# Update state
+python3 -c "
+import json
+from datetime import datetime, timezone
+
+with open('.peachflow-state.json', 'r') as f:
+    state = json.load(f)
+
+state['phases']['discovery']['status'] = 'completed'
+state['phases']['discovery']['completedAt'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+state['lastUpdated'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+with open('.peachflow-state.json', 'w') as f:
+    json.dump(state, f, indent=2)
+"
+```
+
+#### Output Summary
+
+```
+Discovery complete for $PROJECT_NAME!
+
+Documents created:
   - docs/01-business/BRD.md (X business requirements)
-  - docs/02-product/PRD.md (X features)
-  - docs/02-product/user-personas.md
-  - docs/02-product/user-flows.md
+  - docs/02-product/PRD.md (Y features)
 
-Requirements ready for planning:
-  - BR-001 through BR-XXX
-  - F-001 through F-XXX
+Epics created in graph:
+  - E-001: User Authentication (Q1, Priority 1)
+  - E-002: Dashboard & Analytics (Q1, Priority 2)
+  - E-003: Notification System (Q2, Priority 3)
 
-Next: /peachflow:define (detailed requirements)
+[If clarifications pending:]
+Clarifications needed: Z items
+Run /peachflow:clarify to resolve them.
+
+Next: /peachflow:design
 ```
 
 ---
 
-## Mode B: Feature Discovery (Add to Existing Project)
+## Mode B: Feature Discovery (Add to Existing)
 
-When discovery was already completed and user wants to add new features/initiatives.
+When discovery is already complete - adding new features.
 
-### Detection
+### Workflow
+
+#### Phase 1: Understand New Feature
+
+Parse the user's input to understand:
+- What feature/initiative they want to add
+- Rough scope and priority
+
+#### Phase 2: Update Documents
+**Invoke**: product-manager agent
+
+The agent:
+- Adds new features to PRD (new F-XXX entries)
+- Updates BRD if there are new business requirements
+- Creates new epic(s) in the graph
 
 ```bash
-discovery_status=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-phase discovery)
-if [ "$discovery_status" = "completed" ]; then
-  echo "FEATURE_MODE"
-fi
+# Create new epic for the feature
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create epic \
+  --title "New Feature Name" \
+  --quarter Q2 \
+  --priority 4 \
+  --description "Description of the new feature..." \
+  --deliverables "Deliverable1,Deliverable2"
 ```
 
-### Present Context
+#### Phase 3: Link to Existing
 
-First, show the user what exists:
+If the new feature relates to existing epics:
 
 ```bash
-# Count existing items
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh count brs
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh count features
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh count frs
+# Create clarification if relationship unclear
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create clarification \
+  --entity E-004 \
+  --question "Does this new authentication feature replace E-001 or extend it?"
 ```
 
+#### Output Summary
+
 ```
-Existing project detected.
+Feature added to $PROJECT_NAME!
 
-Current scope:
-  - X business requirements (BR-001 to BR-XXX)
-  - X features (F-001 to F-XXX)
-  - X functional requirements (FR-001 to FR-XXX)
+Updated:
+  - docs/02-product/PRD.md (+2 features)
 
-Adding new feature/initiative: "[user input]"
+New epics:
+  - E-004: Social Login Integration (Q2, Priority 4)
 
-This will run a lighter discovery process to:
-  1. Research how this fits the existing product
-  2. Check for conflicts with current architecture
-  3. Create new BRs and Features
-  4. Update relevant documents
+Related to:
+  - E-001: User Authentication (may need coordination)
+
+Next: /peachflow:design (to update design for new features)
 ```
 
-### Lightweight Discovery Workflow
+---
 
-#### Step 1: Context Analysis
+## Agent Instructions
 
-Read existing documentation to understand current state:
+### For business-analyst
+
+Context to provide:
+```
+Project: $PROJECT_NAME
+Product idea: [user's input]
+Existing documents: [none for new, or paths for feature add]
+
+Create BRD with business requirements (BR-XXX).
+Return only: "Done: docs/01-business/BRD.md - X business requirements"
+```
+
+### For product-manager
+
+Context to provide:
+```
+Project: $PROJECT_NAME
+BRD: [path or content]
+Product idea: [user's input]
+Graph tool: ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py
+
+Tasks:
+1. Create PRD with features (F-XXX)
+2. Create epics in graph for major features
+3. Assign epics to quarters based on priority
+
+Return only: "Done: docs/02-product/PRD.md - Y features, Z epics created"
+```
+
+---
+
+## Clarification Handling
+
+During discovery, if agents encounter ambiguity:
 
 ```bash
-# Read existing BRD
-cat docs/01-business/BRD.md
-
-# Read existing PRD
-cat docs/02-product/PRD.md
-
-# Read architecture if exists
-cat docs/02-product/architecture/high-level-design.md 2>/dev/null
-
-# Check existing personas
-cat docs/02-product/user-personas.md
+# Create clarification in graph
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create clarification \
+  --entity "general" \
+  --question "Should the authentication system support SSO providers?"
 ```
 
-#### Step 2: Feature Research
-**Invoke**: business-analyst agent with context
-
-Prompt includes:
-- The new feature/initiative description
-- Summary of existing BRD (objectives, constraints)
-- Instruction to ADD to existing docs, not replace
-
-Agent will:
-1. Research the new feature's business case
-2. Check alignment with existing objectives
-3. Identify new business requirements (BR-XXX)
-4. **Append** to BRD.md (new section: "## Addition: [Feature Name]")
-
-#### Step 3: Market Validation (Optional)
-**Invoke**: market-analyst agent if needed
-
-Only if the feature represents a new market direction:
-- Quick competitive check
-- Validation that feature aligns with market position
-
-#### Step 4: User Impact Analysis
-**Invoke**: user-researcher agent with context
-
-Agent will:
-1. Check which personas are affected
-2. Update user journeys if needed
-3. Identify new pain points addressed
-
-#### Step 5: Product Integration
-**Invoke**: product-manager agent with context
-
-Agent will:
-1. Create new features (F-XXX)
-2. Determine priority relative to existing features
-3. Check for conflicts/dependencies with existing features
-4. **Append** to PRD.md
-
-#### Step 6: Architecture Impact Check
+At the end of discovery, list pending clarifications:
 
 ```bash
-# Check if architecture exists
-if [ -f "docs/02-product/architecture/high-level-design.md" ]; then
-  echo "CHECK_ARCHITECTURE"
-fi
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --pending
 ```
 
-If architecture exists:
-- Review high-level design
-- Note any architectural changes needed
-- Flag for design phase update
-
-#### Step 7: Track New Requirements
-
-```bash
-# Get new BR and F IDs that were added
-# Add them to state.requirements.unplanned[]
-```
-
-Update state file to track what's new and unplanned.
-
-#### Step 8: Summary
-
-```
-Feature discovery complete!
-
-Added to existing project:
-  - X new business requirements (BR-XXX to BR-XXX)
-  - X new features (F-XXX to F-XXX)
-
-Updated documents:
-  - docs/01-business/BRD.md (appended)
-  - docs/02-product/PRD.md (appended)
-  - [Other updated docs]
-
-Impact assessment:
-  - Personas affected: [list]
-  - Architecture changes needed: [Yes/No]
-  - Potential conflicts: [list or "None identified"]
-
-New requirements pending planning:
-  - [List of unplanned BR/F IDs]
-
-Next steps:
-  /peachflow:define    - Add detailed requirements for new features
-  /peachflow:plan      - Incorporate into quarterly plan
-```
+If any exist, prompt user to answer them or run `/peachflow:clarify`.
 
 ---
 
-## Document Update Patterns
+## Graph Integration
 
-### Appending to BRD.md
+Discovery is the first phase to populate the graph with epics.
 
-```markdown
----
+**What gets created:**
+- Epics (E-XXX) for major features
+- Clarifications (CL-XXX) for open questions
 
-## Feature Addition: [Feature Name]
-*Added: [Date]*
+**What does NOT get created yet:**
+- User stories (created during planning)
+- Tasks (created during planning)
+- ADRs (created during design)
 
-### Business Case
-[Why this feature]
-
-### New Business Requirements
-- **BR-015**: [New requirement]
-- **BR-016**: [New requirement]
-
-### Impact on Existing Requirements
-- BR-003: [How it's affected, or "No change"]
-
-### Constraints
-[New constraints, or "Inherits existing constraints"]
-```
-
-### Appending to PRD.md
-
-```markdown
----
-
-## Feature Addition: [Feature Name]
-*Added: [Date]*
-
-### F-020: [Feature Name]
-- **Description**: [What it does]
-- **User Story**: As a [persona], I want to [action] so that [benefit]
-- **Priority**: [Must/Should/Could]
-- **Dependencies**: [Existing features it depends on]
-- **Acceptance Criteria**:
-  - [ ] [Criterion]
-
-### Impact on Existing Features
-- F-005: [Requires modification because...]
-- F-008: [No change needed]
-```
-
----
-
-## State Management
-
-### Tracking Planned vs Unplanned
-
-The state file tracks requirements status:
-
-```json
-{
-  "requirements": {
-    "planned": ["BR-001", "BR-002", "F-001", "F-002"],
-    "unplanned": ["BR-015", "BR-016", "F-020"]
-  },
-  "features": [
-    {
-      "id": "F-020",
-      "name": "Feature Name",
-      "addedAt": "2024-01-20",
-      "discoveryType": "feature",
-      "status": "unplanned"
-    }
-  ]
-}
-```
-
-This allows `/peachflow:plan` to:
-- Know what's new since last planning
-- Incorporate new features into existing plans
-- Identify potential migrations needed
-
----
-
-## Guidelines
-
-### For Full Discovery
-- Don't over-research: Get key insights, then move on
-- Bullet points over prose
-- Each doc max 1-2 pages
-- Mark unknowns with `[NEEDS CLARIFICATION: ...]`
-
-### For Feature Discovery
-- Review existing docs before adding
-- Explicitly note conflicts/dependencies
-- Keep additions clearly marked (dated sections)
-- Consider impact on existing architecture
-- Flag if new feature needs technical design review
+**Epic assignment:**
+- Critical/foundational → Q1
+- Important but not blocking → Q2
+- Nice to have → Q3/Q4
+- Lower priority determined by product-manager

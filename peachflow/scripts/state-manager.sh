@@ -1,5 +1,5 @@
 #!/bin/bash
-# State Manager for Peachflow 2
+# State Manager for Peachflow 3
 # Manages .peachflow-state.json for tracking project progress
 
 STATE_FILE=".peachflow-state.json"
@@ -8,6 +8,7 @@ init_state() {
   local project_name="${1:-Untitled Project}"
   local project_type="${2:-new}"
   local max_parallel="${3:-3}"
+  local version_control="${4:-true}"
   local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
   # Validate max_parallel is between 1 and 6
@@ -15,32 +16,34 @@ init_state() {
     max_parallel=3
   fi
 
+  # Convert version_control to JSON boolean
+  local vc_json="true"
+  if [ "$version_control" = "false" ] || [ "$version_control" = "0" ] || [ "$version_control" = "no" ]; then
+    vc_json="false"
+  fi
+
   if [ ! -f "$STATE_FILE" ]; then
     cat > "$STATE_FILE" << EOF
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "initialized": "$timestamp",
   "projectName": "$project_name",
   "projectType": "$project_type",
+  "testingStrategy": "none",
+  "testingIntensity": "none",
   "maxParallelTasks": $max_parallel,
+  "versionControlDocs": $vc_json,
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
-    "definition": { "status": "pending", "completedAt": null },
     "design": { "status": "pending", "completedAt": null },
     "plan": { "status": "pending", "completedAt": null }
   },
   "currentQuarter": null,
-  "quarters": {},
-  "requirements": {
-    "planned": [],
-    "unplanned": []
-  },
-  "features": [],
-  "planUpdates": [],
+  "currentSprint": null,
   "lastUpdated": "$timestamp"
 }
 EOF
-    echo "State initialized for '$project_name' (max parallel: $max_parallel)"
+    echo "State initialized for '$project_name' (max parallel: $max_parallel, git: $vc_json)"
   else
     echo "State file already exists"
   fi
@@ -90,6 +93,93 @@ set_max_parallel() {
   if [ -f "$STATE_FILE" ]; then
     jq ".maxParallelTasks = ${max_parallel} | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
     echo "Max parallel tasks set to $max_parallel"
+  else
+    echo "Error: State file not found"
+    exit 1
+  fi
+}
+
+# Version control docs management
+get_version_control() {
+  if [ -f "$STATE_FILE" ]; then
+    # Check if key exists, default to true if not
+    local result=$(jq -r 'if .versionControlDocs == null then "true" else (.versionControlDocs | tostring) end' "$STATE_FILE")
+    echo "$result"
+  else
+    echo "true"
+  fi
+}
+
+set_version_control() {
+  local enabled="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  # Convert to JSON boolean
+  local vc_json="true"
+  if [ "$enabled" = "false" ] || [ "$enabled" = "0" ] || [ "$enabled" = "no" ]; then
+    vc_json="false"
+  fi
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".versionControlDocs = ${vc_json} | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Version control set to $vc_json"
+  else
+    echo "Error: State file not found"
+    exit 1
+  fi
+}
+
+# Testing configuration
+get_testing_strategy() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.testingStrategy // "none"' "$STATE_FILE"
+  else
+    echo "none"
+  fi
+}
+
+get_testing_intensity() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.testingIntensity // "none"' "$STATE_FILE"
+  else
+    echo "none"
+  fi
+}
+
+set_testing() {
+  local strategy="$1"
+  local intensity="$2"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    jq ".testingStrategy = \"${strategy}\" | .testingIntensity = \"${intensity}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    echo "Testing set to $strategy / $intensity"
+  else
+    echo "Error: State file not found"
+    exit 1
+  fi
+}
+
+# Current sprint management
+get_current_sprint() {
+  if [ -f "$STATE_FILE" ]; then
+    jq -r '.currentSprint // "none"' "$STATE_FILE"
+  else
+    echo "none"
+  fi
+}
+
+set_current_sprint() {
+  local sprint="$1"
+  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ -f "$STATE_FILE" ]; then
+    if [ "$sprint" = "none" ] || [ "$sprint" = "null" ] || [ -z "$sprint" ]; then
+      jq ".currentSprint = null | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    else
+      jq ".currentSprint = \"${sprint}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    fi
+    echo "Current sprint set to '$sprint'"
   else
     echo "Error: State file not found"
     exit 1
@@ -362,53 +452,26 @@ get_requirements_summary() {
   fi
 }
 
-# Testing configuration
-get_testing_strategy() {
-  if [ -f "$STATE_FILE" ]; then
-    jq -r '.testingStrategy // "none"' "$STATE_FILE"
-  else
-    echo "none"
-  fi
-}
-
-get_testing_intensity() {
-  if [ -f "$STATE_FILE" ]; then
-    jq -r '.testingIntensity // "none"' "$STATE_FILE"
-  else
-    echo "none"
-  fi
-}
-
-set_testing() {
-  local strategy="$1"
-  local intensity="$2"
-  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-  if [ -f "$STATE_FILE" ]; then
-    jq ".testingStrategy = \"${strategy}\" | .testingIntensity = \"${intensity}\" | .lastUpdated = \"${timestamp}\"" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
-    echo "Testing set to '$strategy' / '$intensity'"
-  else
-    echo "Error: State file not found"
-    exit 1
-  fi
-}
-
 show_status() {
   if [ -f "$STATE_FILE" ]; then
     project_name=$(jq -r '.projectName // "Untitled Project"' "$STATE_FILE")
-    echo "=== $project_name - Project Status ==="
+    version=$(jq -r '.version // "2.0.0"' "$STATE_FILE")
+    echo "=== $project_name - Project Status (v$version) ==="
     echo ""
     project_type=$(jq -r ".projectType // \"unknown\"" "$STATE_FILE")
     max_parallel=$(jq -r ".maxParallelTasks // 3" "$STATE_FILE")
     testing_strategy=$(jq -r ".testingStrategy // \"none\"" "$STATE_FILE")
     testing_intensity=$(jq -r ".testingIntensity // \"none\"" "$STATE_FILE")
+    version_control=$(jq -r ".versionControlDocs // true" "$STATE_FILE")
     echo "Project Type: $project_type"
     echo "Max Parallel Tasks: $max_parallel"
     echo "Testing: $testing_strategy / $testing_intensity"
+    echo "Git Tracking: $version_control"
     echo ""
     echo "Phases:"
-    for phase in discovery definition design plan; do
-      status=$(jq -r ".phases.${phase}.status" "$STATE_FILE")
+    # v3 has discovery, design, plan; v2 has discovery, definition, design, plan
+    for phase in discovery design plan; do
+      status=$(jq -r ".phases.${phase}.status // \"pending\"" "$STATE_FILE")
       case "$status" in
         "completed") icon="[x]" ;;
         "in_progress") icon="[>]" ;;
@@ -544,6 +607,20 @@ case "$1" in
   get-requirements-summary)
     get_requirements_summary
     ;;
+  # Version control
+  get-version-control)
+    get_version_control
+    ;;
+  set-version-control)
+    set_version_control "$2"
+    ;;
+  # Sprint management
+  get-sprint)
+    get_current_sprint
+    ;;
+  set-sprint)
+    set_current_sprint "$2"
+    ;;
   # Testing configuration
   get-testing-strategy)
     get_testing_strategy
@@ -561,48 +638,33 @@ case "$1" in
     echo "Usage: state-manager.sh <command> [args]"
     echo ""
     echo "Project Commands:"
-    echo "  init <name> [type] [parallel]  Initialize state (type: new|existing|continued, parallel: 1-6)"
+    echo "  init <name> [type] [parallel] [git]  Initialize state"
     echo "  get-project-name               Get the project name"
     echo "  set-project-name <name>        Set the project name"
     echo "  get-max-parallel               Get max parallel tasks (1-6)"
     echo "  set-max-parallel <n>           Set max parallel tasks (1-6)"
+    echo "  get-version-control            Get git tracking setting (true|false)"
+    echo "  set-version-control <bool>     Set git tracking (true|false)"
     echo "  status                         Show full project status"
     echo ""
     echo "Phase Commands:"
     echo "  get-phase <phase>           Get status of a phase"
     echo "  set-phase <phase> <status>  Set phase status"
     echo ""
+    echo "Sprint Commands:"
+    echo "  get-sprint                  Get current sprint ID"
+    echo "  set-sprint <id>             Set current sprint (use 'none' to clear)"
+    echo ""
     echo "Quarter Commands:"
     echo "  get-quarter                 Get current quarter"
     echo "  set-quarter <quarter>       Set current quarter"
     echo "  get-quarter-status <q>      Get quarter status"
     echo "  set-quarter-status <q> <s>  Set quarter status"
-    echo "  get-next-quarter <current>  Get next quarter ID"
-    echo "  get-quarter-progress <q>    Get completion stats"
     echo "  list-quarters               List all quarters with status"
-    echo "  set-worktree <q> <path>     Set worktree path for quarter"
-    echo "  get-worktree <q>            Get worktree path for quarter"
-    echo ""
-    echo "Requirements Commands:"
-    echo "  get-planned                 List all planned requirement IDs"
-    echo "  get-unplanned               List all unplanned requirement IDs"
-    echo "  add-planned <id>            Add requirement to planned list"
-    echo "  add-unplanned <id>          Add requirement to unplanned list"
-    echo "  move-to-planned <id>        Move requirement from unplanned to planned"
-    echo "  bulk-add-unplanned          Add multiple IDs to unplanned (stdin, one per line)"
-    echo "  bulk-move-to-planned        Move multiple IDs to planned (stdin, one per line)"
-    echo "  get-requirements-summary    Get planned/unplanned counts"
-    echo ""
-    echo "Feature Commands:"
-    echo "  add-feature <id> <name> [type]  Add feature (type: full|feature)"
-    echo "  set-feature-status <id> <s>     Set feature status"
-    echo ""
-    echo "Plan Update Commands:"
-    echo "  add-plan-update <added> <quarters> <migrations>  Record plan update"
     echo ""
     echo "Testing Configuration:"
-    echo "  get-testing-strategy        Get testing strategy (none|tdd|bdd|atdd|test-last)"
-    echo "  get-testing-intensity       Get testing intensity (none|essential|smart|intense)"
+    echo "  get-testing-strategy        Get testing strategy"
+    echo "  get-testing-intensity       Get testing intensity"
     echo "  set-testing <strategy> <intensity>  Set both testing values"
     exit 1
     ;;

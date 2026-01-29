@@ -1,111 +1,192 @@
 ---
 name: peachflow:clarify
-description: Manually trigger clarification round. Scans all documents for [NEEDS CLARIFICATION] markers and interviews user.
-argument-hint: ""
-disable-model-invocation: true
-allowed-tools: Read, Write, Edit, Grep, Glob, AskUserQuestion, Bash
+description: Review and resolve pending clarifications stored in the graph. Clarifications are questions that arose during discovery, design, or planning.
+allowed-tools: Read, Write, Bash, AskUserQuestion
 ---
 
-# /peachflow:clarify - Manual Clarification
+# /peachflow:clarify - Resolve Clarifications (v3)
 
-Scan all project documents for unresolved questions and interview user to resolve them.
+Review and answer pending clarifications stored in the graph. Clarifications are open questions that need human input before proceeding.
 
-## Output Responsibility
+## Pre-flight Check
 
-**CRITICAL**: This command is responsible for the unified output to the user.
-
-- Sub-agents return minimal responses (just confirmation of what was done)
-- DO NOT let agent responses bubble up to the user
-- Collect results from all agents, then provide ONE final summary at the end
-- Only this command suggests next steps, not the agents
-
-## Overview
-
-This command can be run at any time to:
-- Find all `[NEEDS CLARIFICATION]` markers
-- Ask user targeted questions
-- Update documents with answers
-- Track progress in clarification.md
-
-## Workflow
-
-### 1. Scan Documents
-
-Find all clarification markers:
 ```bash
-grep -r "\[NEEDS CLARIFICATION" docs/ --include="*.md" 2>/dev/null || echo "No markers found"
+# Check initialization
+if [ ! -f ".peachflow-graph.json" ]; then
+  echo "NOT_INITIALIZED"
+  exit 1
+fi
+
+# Get pending clarifications
+pending=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --pending --format json)
+count=$(echo "$pending" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+
+if [ "$count" -eq "0" ]; then
+  echo "NO_PENDING"
+fi
 ```
 
-### 2. Check Clarification Log
-
-Read `/docs/clarification.md` if it exists:
-- Check what's already resolved
-- Identify pending items
-- Avoid re-asking resolved questions
-
-### 3. Invoke Clarification Agent
-**Invoke**: clarification-agent
-
-The agent will:
-1. Parse all markers found
-2. Categorize by priority (blocker, important, nice-to-have)
-3. Formulate questions with options where possible
-4. Ask user max 5 questions per round
-5. Update documents with answers
-6. Update clarification.md
-
-### 4. Report Summary
-
-Show:
-- Questions resolved this round
-- Questions still pending
-- Recommendation for next steps
-
-## Usage Examples
-
-### Run after any phase
+**If no pending clarifications:**
 ```
-/peachflow:clarify
+No pending clarifications.
+
+All questions have been answered. You can proceed with:
+  /peachflow:design    (if in discovery phase)
+  /peachflow:plan      (if in design phase)
+  /peachflow:create-sprint (if in plan phase)
 ```
 
-### Check what needs clarification without asking
-First run grep directly:
+---
+
+## Step 1: List Pending Clarifications
+
 ```bash
-grep -r "\[NEEDS CLARIFICATION" docs/ --include="*.md"
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --pending
 ```
 
-## Output
+Display to user:
+```
+Pending Clarifications ($count items)
+─────────────────────────────────────────
+
+CL-001: Should authentication support SSO providers?
+  Related to: E-001 (User Authentication)
+  Created: 2024-01-15
+
+CL-002: What email provider should be used for notifications?
+  Related to: E-004 (Notification System)
+  Created: 2024-01-16
+
+CL-003: Is dark mode required for initial release?
+  Related to: general
+  Created: 2024-01-16
+```
+
+---
+
+## Step 2: Present Each Clarification
+
+For each pending clarification, ask the user:
+
+```json
+{
+  "questions": [{
+    "question": "CL-001: Should authentication support SSO providers (Google, GitHub, etc.)?",
+    "header": "SSO Support",
+    "options": [
+      {"label": "Yes, Google only", "description": "Support Google OAuth sign-in"},
+      {"label": "Yes, multiple providers", "description": "Support Google, GitHub, Microsoft"},
+      {"label": "No, email/password only", "description": "Traditional auth only for MVP"},
+      {"label": "Defer to later", "description": "Skip for now, revisit in future quarter"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+---
+
+## Step 3: Record Answers
+
+After user provides answer:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update clarification CL-001 \
+  --status clarified \
+  --answer "Yes, support Google OAuth for initial release. Other providers can be added later."
+```
+
+---
+
+## Step 4: Update Related Entities (if needed)
+
+If the clarification affects planning:
+
+```bash
+# If answer changes scope of an epic
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update epic E-001 \
+  --description "Updated description based on CL-001 clarification"
+
+# If answer requires new tasks
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
+  --story US-001 \
+  --title "Implement Google OAuth" \
+  --tag BE \
+  --description "Add Google OAuth sign-in based on CL-001"
+```
+
+---
+
+## Step 5: Summary
 
 ```
-Clarification Summary
-=====================
+Clarifications resolved: $count
 
-Resolved this round:
-  [x] Target audience (BRD.md) - "Small business owners"
-  [x] Compliance requirements (NFRs.md) - "GDPR + CCPA"
+Answers recorded:
+  CL-001: Support Google OAuth for initial release
+  CL-002: Use SendGrid for email notifications
+  CL-003: Defer dark mode to Q2
 
-Still pending:
-  [ ] Scale expectations (architecture.md) - blocking deployment planning
-  [ ] Payment provider choice (FRD.md)
+Impact:
+  - E-001 updated with OAuth scope
+  - 2 new tasks added for OAuth implementation
+  - E-007 created for dark mode (Q2)
 
-Recommendation:
-  2 pending questions. Would you like to continue?
+No remaining clarifications.
+
+Next: Continue with your current phase
 ```
 
-## Integration with Phases
+---
 
-Clarification is auto-invoked at the end of:
-- `/peachflow:discover`
-- `/peachflow:define`
-- `/peachflow:design`
-- `/peachflow:plan`
+## Clarification Workflow
 
-Use this command to run additional clarification rounds or check status.
+```
+Any phase (discover/design/plan)
+    │
+    ▼
+Agent encounters ambiguity
+    │
+    ▼
+Creates clarification in graph
+    │
+    ▼
+Phase completes with pending clarifications
+    │
+    ▼
+User runs /peachflow:clarify
+    │
+    ▼
+Answers recorded, entities updated
+    │
+    ▼
+Continue to next phase
+```
 
-## Guidelines
+---
 
-- Questions asked in batches of max 5
-- Multi-choice when options are clear
-- Free text always available
-- All clarifications logged in clarification.md
-- Documents updated inline when answers received
+## Creating Clarifications Manually
+
+Users can also add their own clarifications:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create clarification \
+  --entity E-002 \
+  --question "What charting library should we use for analytics?"
+```
+
+---
+
+## Viewing Clarification History
+
+See all clarifications (including resolved):
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications
+```
+
+Filter by entity:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --entity E-001
+```

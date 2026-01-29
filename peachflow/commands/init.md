@@ -1,374 +1,420 @@
 ---
 name: peachflow:init
-description: Initialize peachflow for a project. Creates the state file and docs structure. Can also reconfigure an existing project.
+description: Initialize peachflow v3 for a project. Creates state file and graph structure. Can reconfigure an existing project.
 allowed-tools: Read, Write, Bash, Glob, AskUserQuestion
 aliases: [peachflow:config]
 ---
 
-# /peachflow:init - Initialize or Configure Peachflow
+# /peachflow:init - Initialize or Configure Peachflow v3
 
-Set up peachflow for a new project or reconfigure an existing one. This command must be run before any other peachflow commands.
+Set up peachflow for a new project or reconfigure an existing one.
+
+## CRITICAL: Use Settings Schema
+
+**You MUST read and follow the settings schema for all user questions:**
+
+```bash
+cat ${CLAUDE_PLUGIN_ROOT}/templates/settings-schema.md
+```
+
+Use the EXACT question text, option labels, and descriptions from the schema. Do not improvise or vary the format.
 
 ## Pre-flight Check
 
-First, check if peachflow is already initialized:
-
 ```bash
 if [ -f ".peachflow-state.json" ]; then
-  echo "ALREADY_INITIALIZED"
+  version=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('version', '2.0.0'))")
+  echo "ALREADY_INITIALIZED version=$version"
 fi
 ```
 
-**If already initialized (or called as /peachflow:config):**
-Go to **Configuration Mode** below.
-
-**If not initialized:**
-Go to **Initialization Mode** below.
+**If already initialized (or called as /peachflow:config):** → Configuration Mode
+**If not initialized:** → Initialization Mode
 
 ---
 
 ## Initialization Mode (New Project)
 
-### Step 1: Get Project Information
-
-Ask the user for project details:
-
-```json
-{
-  "questions": [
-    {
-      "question": "What is the name of your project?",
-      "header": "Project Name",
-      "options": [
-        {"label": "Enter name", "description": "You'll type the project name (e.g., 'TaskFlow', 'ShopEase')"}
-      ],
-      "multiSelect": false
-    },
-    {
-      "question": "What type of project is this?",
-      "header": "Project Type",
-      "options": [
-        {"label": "New project (Recommended)", "description": "Starting from scratch, no existing code"},
-        {"label": "Existing codebase", "description": "Adding peachflow to a project already in development"},
-        {"label": "Continuing previous work", "description": "Resuming a peachflow project from backup/export"}
-      ],
-      "multiSelect": false
-    },
-    {
-      "question": "How many tasks should run in parallel during implementation?",
-      "header": "Parallelism",
-      "options": [
-        {"label": "3 (Recommended)", "description": "Balanced - good for most projects"},
-        {"label": "1", "description": "Sequential - one task at a time"},
-        {"label": "2", "description": "Light parallel - two concurrent tasks"},
-        {"label": "4", "description": "More parallel - four concurrent tasks"},
-        {"label": "6", "description": "Maximum - six concurrent tasks"}
-      ],
-      "multiSelect": false
-    }
-  ]
-}
-```
-
-### Step 2: Get Testing Configuration
-
-```json
-{
-  "questions": [
-    {
-      "question": "What testing strategy should we use?",
-      "header": "Testing",
-      "options": [
-        {"label": "No Tests (Recommended for MVPs)", "description": "Skip automated testing, focus on speed"},
-        {"label": "TDD - Test Driven Development", "description": "Write tests first, then implementation"},
-        {"label": "BDD - Behavior Driven Development", "description": "Given/When/Then style tests from user stories"},
-        {"label": "ATDD - Acceptance Test Driven", "description": "Tests from acceptance criteria first"},
-        {"label": "Test-last", "description": "Write tests after implementation"}
-      ],
-      "multiSelect": false
-    },
-    {
-      "question": "What level of test coverage?",
-      "header": "Intensity",
-      "options": [
-        {"label": "Essential (Recommended)", "description": "Unit tests only - fast, focused"},
-        {"label": "Smart", "description": "Unit + component + mocked API testing"},
-        {"label": "Intense", "description": "Everything + automated UI testing (Playwright)"}
-      ],
-      "multiSelect": false
-    }
-  ]
-}
-```
-
-**Skip testing questions if user selected "No Tests"** - set intensity to "none" automatically.
-
-### Step 3: Create State File
+### Step 1: Read Settings Schema
 
 ```bash
-# Parse testing strategy: "TDD - Test Driven Development" → "tdd"
-# Parse testing intensity: "Smart" → "smart"
-# Parse parallelism: "3 (Recommended)" → 3
-
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh init "ProjectName" "new" "3"
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-testing "tdd" "smart"
+cat ${CLAUDE_PLUGIN_ROOT}/templates/settings-schema.md
 ```
 
-This creates `.peachflow-state.json`:
+### Step 2: Get Project Settings
 
+Present questions using the EXACT format from the schema. Ask in this order:
+
+**Question 1: Project Name** (from schema Group 1)
 ```json
 {
-  "version": "2.0.0",
-  "initialized": "2024-01-15T10:30:00Z",
-  "projectName": "TaskFlow",
-  "projectType": "new",
-  "maxParallelTasks": 3,
-  "testingStrategy": "tdd",
-  "testingIntensity": "smart",
-  "phases": {
-    "discovery": { "status": "pending", "completedAt": null },
-    "definition": { "status": "pending", "completedAt": null },
-    "design": { "status": "pending", "completedAt": null },
-    "plan": { "status": "pending", "completedAt": null }
-  },
-  "currentQuarter": null,
-  "quarters": {},
-  "requirements": {
-    "planned": [],
-    "unplanned": []
-  },
-  "lastUpdated": null
+  "question": "What is the name of your project?",
+  "header": "Project",
+  "options": [
+    {"label": "Use directory name", "description": "Use the current folder name as project name"},
+    {"label": "Enter custom name", "description": "Type a custom project name"}
+  ],
+  "multiSelect": false
 }
 ```
 
-### Step 4: Create Directory Structure
+**Question 2: Project Type** (from schema Group 2)
+```json
+{
+  "question": "What type of project is this?",
+  "header": "Type",
+  "options": [
+    {"label": "New project", "description": "Starting from scratch, no existing code"},
+    {"label": "Existing codebase", "description": "Adding peachflow to a project already in development"},
+    {"label": "Continuing previous", "description": "Resuming a peachflow project from backup"}
+  ],
+  "multiSelect": false
+}
+```
+
+**Question 3: Testing Strategy** (from schema Group 3)
+```json
+{
+  "question": "What testing approach should we use?",
+  "header": "Testing",
+  "options": [
+    {"label": "No automated tests", "description": "Skip testing, focus on speed (good for MVPs)"},
+    {"label": "TDD (Test-Driven)", "description": "Write tests first, then implementation"},
+    {"label": "BDD (Behavior-Driven)", "description": "Given/When/Then tests from user stories"},
+    {"label": "Test after code", "description": "Write tests after implementation"}
+  ],
+  "multiSelect": false
+}
+```
+
+**Question 4: Testing Intensity** (from schema Group 4)
+*Only ask if testing strategy is NOT "No automated tests"*
+```json
+{
+  "question": "What level of test coverage?",
+  "header": "Coverage",
+  "options": [
+    {"label": "Essential only", "description": "Unit tests for core logic"},
+    {"label": "Standard", "description": "Unit + component + API mock tests"},
+    {"label": "Comprehensive", "description": "Standard + end-to-end UI tests"}
+  ],
+  "multiSelect": false
+}
+```
+
+**Question 5: Parallel Tasks** (from schema Group 5)
+```json
+{
+  "question": "How many tasks should run in parallel during implementation?",
+  "header": "Parallel",
+  "options": [
+    {"label": "1 (Sequential)", "description": "One task at a time, maximum control"},
+    {"label": "2 (Light)", "description": "Two concurrent tasks"},
+    {"label": "3 (Balanced)", "description": "Three concurrent tasks (recommended)"},
+    {"label": "4 (More)", "description": "Four concurrent tasks"},
+    {"label": "6 (Maximum)", "description": "Six concurrent tasks, fastest execution"}
+  ],
+  "multiSelect": false
+}
+```
+
+**Question 6: Version Control** (from schema Group 6)
+```json
+{
+  "question": "Should peachflow files be version controlled (committed to git)?",
+  "header": "Git",
+  "options": [
+    {"label": "Yes, track in git", "description": "Commit docs, state, and graph to repository (recommended for teams)"},
+    {"label": "No, ignore in git", "description": "Add peachflow files to .gitignore (local-only workflow)"}
+  ],
+  "multiSelect": false
+}
+```
+
+### Step 3: Map User Choices to Values
+
+Use the value mappings from the schema:
+
+| User Choice | State Key | Value |
+|-------------|-----------|-------|
+| "New project" | projectType | `"new"` |
+| "Existing codebase" | projectType | `"existing"` |
+| "Continuing previous" | projectType | `"continuing"` |
+| "No automated tests" | testingStrategy | `"none"` |
+| "TDD (Test-Driven)" | testingStrategy | `"tdd"` |
+| "BDD (Behavior-Driven)" | testingStrategy | `"bdd"` |
+| "Test after code" | testingStrategy | `"test-last"` |
+| "Essential only" | testingIntensity | `"essential"` |
+| "Standard" | testingIntensity | `"smart"` |
+| "Comprehensive" | testingIntensity | `"intense"` |
+| "1 (Sequential)" | maxParallelTasks | `1` |
+| "2 (Light)" | maxParallelTasks | `2` |
+| "3 (Balanced)" | maxParallelTasks | `3` |
+| "4 (More)" | maxParallelTasks | `4` |
+| "6 (Maximum)" | maxParallelTasks | `6` |
+| "Yes, track in git" | versionControlDocs | `true` |
+| "No, ignore in git" | versionControlDocs | `false` |
+
+### Step 4: Create State File
+
+```bash
+python3 << 'EOF'
+import json
+from datetime import datetime, timezone
+
+state = {
+    "version": "3.0.0",
+    "initialized": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "projectName": "PROJECT_NAME_HERE",
+    "projectType": "new",
+    "testingStrategy": "none",
+    "testingIntensity": "none",
+    "maxParallelTasks": 3,
+    "versionControlDocs": True,
+    "phases": {
+        "discovery": {"status": "pending", "completedAt": None},
+        "design": {"status": "pending", "completedAt": None},
+        "plan": {"status": "pending", "completedAt": None}
+    },
+    "currentSprint": None,
+    "currentQuarter": None,
+    "lastUpdated": None
+}
+
+with open(".peachflow-state.json", "w") as f:
+    json.dump(state, f, indent=2)
+EOF
+```
+
+### Step 5: Initialize Graph
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py init
+```
+
+### Step 6: Create Directory Structure
 
 ```bash
 mkdir -p docs/01-business
-mkdir -p docs/02-product/ux
+mkdir -p docs/02-product
 mkdir -p docs/02-product/architecture/adr
-mkdir -p docs/03-requirements
-mkdir -p docs/04-plan/quarters
-mkdir -p docs/05-debt
+mkdir -p .claude/skills
 ```
 
-### Step 5: Create Placeholder Files
+### Step 7: Handle Version Control Setting
 
-**docs/clarification.md:**
-```markdown
-# Clarification Log
+**If `versionControlDocs` is `false`**, add peachflow files to .gitignore:
 
-## Resolved
-(None yet)
+```bash
+# Check if .gitignore exists, create if not
+touch .gitignore
 
-## Pending
-(None yet)
+# Check if peachflow section already exists
+if ! grep -q "# Peachflow" .gitignore; then
+  cat >> .gitignore << 'EOF'
+
+# Peachflow (local-only mode)
+.peachflow-state.json
+.peachflow-graph.json
+docs/
+.claude/skills/
+EOF
+  echo "Added peachflow files to .gitignore"
+fi
 ```
 
-**docs/decision-log.md:**
-```markdown
-# Decision Log
+**If `versionControlDocs` is `true`** (default), do nothing special - files will be tracked normally.
 
-Decisions are tracked in `decisions.json` and exported here.
+### Step 8: Output Summary
 
-## Decisions
-(None yet)
+Use the display format from the schema:
+
 ```
+Current Settings
+────────────────────────────────────────
+Project:      [projectName]
+Type:         [projectType display name]
+Testing:      [testingStrategy display] / [testingIntensity display]
+Parallel:     [maxParallelTasks] tasks
+Git tracking: [Yes/No]
 
-### Step 6: Output Summary
-
-**For existing projects:**
-```
-Peachflow initialized for existing project.
-
-Settings:
-  Project: [name]
-  Testing: [strategy] / [intensity]
-  Parallel tasks: [n]
-
-Next: /peachflow:analyze
-```
-
-**For new projects:**
-```
-Peachflow initialized for new project.
-
-Settings:
-  Project: [name]
-  Testing: [strategy] / [intensity]
-  Parallel tasks: [n]
+Files created:
+  - .peachflow-state.json (project state)
+  - .peachflow-graph.json (work items graph)
+  - docs/ (document structure)
+  - .claude/skills/ (for generated design skills)
 
 Next: /peachflow:discover "your product idea"
+```
+
+For existing codebases:
+```
+Next: /peachflow:analyze
 ```
 
 ---
 
 ## Configuration Mode (Reconfigure Existing)
 
-When project is already initialized or called as `/peachflow:config`.
-
-### Step 1: Show Current Settings
+### Step 1: Read Settings Schema
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh status
-testing_strategy=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-testing-strategy)
-testing_intensity=$(${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh get-testing-intensity)
+cat ${CLAUDE_PLUGIN_ROOT}/templates/settings-schema.md
 ```
 
-```
-Current settings:
-  Project: TaskFlow
-  Testing: TDD / Smart
-  Parallel tasks: 3
+### Step 2: Show Current Settings
 
-Phase status:
-  [x] Discovery (completed)
-  [x] Definition (completed)
-  [ ] Design (pending)
-  [ ] Plan (pending)
-```
-
-### Step 2: Ask What to Configure
-
-```json
-{
-  "questions": [{
-    "question": "What would you like to configure?",
-    "header": "Configure",
-    "options": [
-      {"label": "Testing strategy", "description": "Change TDD/BDD/ATDD/Test-last/None"},
-      {"label": "Testing intensity", "description": "Change Essential/Smart/Intense"},
-      {"label": "Parallel tasks", "description": "Change how many tasks run concurrently"},
-      {"label": "Project name", "description": "Rename the project"}
-    ],
-    "multiSelect": true
-  }]
-}
-```
-
-### Step 3: Apply Selected Changes
-
-**If testing strategy selected:**
-```json
-{
-  "questions": [{
-    "question": "Select testing strategy:",
-    "header": "Testing",
-    "options": [
-      {"label": "No Tests", "description": "Skip automated testing"},
-      {"label": "TDD", "description": "Test Driven Development"},
-      {"label": "BDD", "description": "Behavior Driven Development"},
-      {"label": "ATDD", "description": "Acceptance Test Driven"},
-      {"label": "Test-last", "description": "Tests after implementation"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-**If testing intensity selected:**
-```json
-{
-  "questions": [{
-    "question": "Select test intensity:",
-    "header": "Intensity",
-    "options": [
-      {"label": "Essential", "description": "Unit tests only"},
-      {"label": "Smart", "description": "Unit + component + mocked API"},
-      {"label": "Intense", "description": "Everything + Playwright UI tests"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-**If parallel tasks selected:**
-```json
-{
-  "questions": [{
-    "question": "How many parallel tasks?",
-    "header": "Parallel",
-    "options": [
-      {"label": "1", "description": "Sequential"},
-      {"label": "2", "description": "Light parallel"},
-      {"label": "3", "description": "Balanced"},
-      {"label": "4", "description": "More parallel"},
-      {"label": "6", "description": "Maximum"}
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-**If project name selected:**
-Ask for new name via text input.
-
-### Step 4: Update State
+Use the display format from the schema:
 
 ```bash
-# Apply changes
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-testing "tdd" "smart"
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-max-parallel 4
-${CLAUDE_PLUGIN_ROOT}/scripts/state-manager.sh set-project-name "NewName"
+python3 << 'EOF'
+import json
+
+with open(".peachflow-state.json") as f:
+    state = json.load(f)
+
+# Display name mappings
+strategy_names = {"none": "No automated tests", "tdd": "TDD (Test-Driven)", "bdd": "BDD (Behavior-Driven)", "test-last": "Test after code"}
+intensity_names = {"none": "None", "essential": "Essential only", "smart": "Standard", "intense": "Comprehensive"}
+type_names = {"new": "New project", "existing": "Existing codebase", "continuing": "Continuing previous"}
+
+print("Current Settings")
+print("─" * 40)
+print(f"Project:      {state['projectName']}")
+print(f"Type:         {type_names.get(state.get('projectType', 'new'), 'New project')}")
+print(f"Testing:      {strategy_names.get(state.get('testingStrategy', 'none'), 'None')} / {intensity_names.get(state.get('testingIntensity', 'none'), 'None')}")
+print(f"Parallel:     {state.get('maxParallelTasks', 3)} tasks")
+print(f"Git tracking: {'Yes' if state.get('versionControlDocs', True) else 'No'}")
+print()
+print("Phases:")
+for phase, data in state.get("phases", {}).items():
+    status = data.get("status", "pending")
+    icon = "[x]" if status == "completed" else "[ ]"
+    print(f"  {icon} {phase.title()} ({status})")
+EOF
 ```
 
-### Step 5: Summary
+### Step 3: Ask What to Configure
+
+Use the Configuration Mode Menu from the schema:
+
+```json
+{
+  "question": "Which settings do you want to change?",
+  "header": "Settings",
+  "options": [
+    {"label": "Project name", "description": "Change the project name"},
+    {"label": "Testing strategy", "description": "Change TDD/BDD/None"},
+    {"label": "Testing intensity", "description": "Change Essential/Standard/Comprehensive"},
+    {"label": "Parallel tasks", "description": "Change concurrent task count"},
+    {"label": "Version control", "description": "Change git tracking preference"}
+  ],
+  "multiSelect": true
+}
+```
+
+### Step 4: Present Selected Setting Questions
+
+For EACH selected setting, present the EXACT question from the schema (Groups 1-6).
+
+**Important:** Only show questions for settings the user selected. Use the exact format from the schema.
+
+### Step 5: Apply Changes
+
+```bash
+python3 << 'EOF'
+import json
+from datetime import datetime, timezone
+
+with open(".peachflow-state.json", "r") as f:
+    state = json.load(f)
+
+# Apply changes (replace with actual values)
+# state["projectName"] = "NewName"
+# state["testingStrategy"] = "tdd"
+# state["testingIntensity"] = "smart"
+# state["maxParallelTasks"] = 4
+# state["versionControlDocs"] = True
+
+state["lastUpdated"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+with open(".peachflow-state.json", "w") as f:
+    json.dump(state, f, indent=2)
+EOF
+```
+
+### Step 6: Handle Version Control Change
+
+**If versionControlDocs changed to `false`:**
+```bash
+# Add to .gitignore
+touch .gitignore
+if ! grep -q "# Peachflow" .gitignore; then
+  cat >> .gitignore << 'EOF'
+
+# Peachflow (local-only mode)
+.peachflow-state.json
+.peachflow-graph.json
+docs/
+.claude/skills/
+EOF
+fi
+```
+
+**If versionControlDocs changed to `true`:**
+```bash
+# Remove peachflow section from .gitignore
+if [ -f .gitignore ]; then
+  # Remove the peachflow section
+  sed -i '' '/# Peachflow (local-only mode)/,/^$/d' .gitignore 2>/dev/null || \
+  sed -i '/# Peachflow (local-only mode)/,/^$/d' .gitignore
+fi
+```
+
+### Step 7: Show Updated Settings
+
+Use the same display format as Step 2, but show both old and new values for changed settings:
 
 ```
 Configuration updated.
 
 Changes:
-  Testing: TDD → BDD
-  Intensity: Smart → Intense
+  Testing: No automated tests → TDD (Test-Driven)
   Parallel: 3 → 4
 
-Current settings:
-  Project: TaskFlow
-  Testing: BDD / Intense
-  Parallel tasks: 4
+Current Settings
+────────────────────────────────────────
+Project:      TaskFlow
+Type:         New project
+Testing:      TDD (Test-Driven) / Standard
+Parallel:     4 tasks
+Git tracking: Yes
 ```
 
 ---
 
-## Testing Strategy Reference
+## File Locations
 
-| Strategy | Description | When to Use |
-|----------|-------------|-------------|
-| **No Tests** | Skip automated testing | MVPs, prototypes, time-critical |
-| **TDD** | Write tests first, then code | When requirements are clear |
-| **BDD** | Given/When/Then from user stories | Stakeholder collaboration |
-| **ATDD** | From acceptance criteria | When criteria are explicit |
-| **Test-last** | Tests after implementation | Legacy code, spikes |
-
-## Testing Intensity Reference
-
-| Intensity | Includes | When to Use |
-|-----------|----------|-------------|
-| **Essential** | Unit tests only | Fast feedback, MVPs |
-| **Smart** | Unit + component + mocked API | Production apps |
-| **Intense** | Smart + Playwright UI tests | Critical user flows |
+| File | Purpose | Git Tracked |
+|------|---------|-------------|
+| `.peachflow-state.json` | Project config, phases, sprint | Per versionControlDocs |
+| `.peachflow-graph.json` | Work items: epics, stories, tasks | Per versionControlDocs |
+| `docs/` | BRD, PRD, ADRs | Per versionControlDocs |
+| `.claude/skills/` | Generated design skills | Per versionControlDocs |
 
 ---
 
-## State File Location
+## Migration from v2
 
-The state file is created at the project root:
-- `.peachflow-state.json` - Track phases, quarters, requirements, testing config
+If a v2 project is detected (version < 3.0.0):
 
-This file should be committed to version control so team members share state.
-
----
-
-## Troubleshooting
-
-**"Permission denied" errors:**
-```bash
-ls -la .
 ```
+Peachflow v2 project detected (version X.X.X).
 
-**Re-initializing:**
-```bash
-rm .peachflow-state.json
-/peachflow:init
+To migrate to v3:
+1. Your docs/ will be preserved
+2. Sprint/task files will be migrated to graph
+3. UX documentation will need manual conversion to skills
+
+Would you like to migrate now?
 ```
-Note: This does NOT delete your docs/ - only resets state tracking.

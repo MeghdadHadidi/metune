@@ -1,7 +1,7 @@
 {
   "name": "peachflow",
-  "version": "2.7.0",
-  "description": "Your AI development team in a CLI. Orchestrates specialized agents through discovery, requirements, design, planning, and implementation phases.",
+  "version": "3.0.0",
+  "description": "Your AI development team in a CLI. Uses a graph-based work item system with epics, stories, and tasks. Generates design skills instead of documentation. Sprint-based implementation with git worktrees.",
   "author": {
     "name": "peachflow",
     "url": "https://github.com/MeghdadHadidi/peachflow"
