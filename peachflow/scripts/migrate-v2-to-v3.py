@@ -145,9 +145,23 @@ class V2Parser:
 
                 # Collect acceptance criteria
                 if in_acceptance and line.strip().startswith("-"):
-                    criteria = line.strip().lstrip("-").strip()
-                    if criteria:
-                        current_story["acceptanceCriteria"].append(criteria)
+                    criteria_line = line.strip().lstrip("-").strip()
+                    if criteria_line:
+                        # Parse checkbox format: [ ] or [x] or [X]
+                        checkbox_match = re.match(r"\[([xX ])\]\s*(.+)", criteria_line)
+                        if checkbox_match:
+                            done = checkbox_match.group(1).lower() == "x"
+                            title = checkbox_match.group(2).strip()
+                            current_story["acceptanceCriteria"].append({
+                                "title": title,
+                                "done": done
+                            })
+                        else:
+                            # No checkbox, treat as not done
+                            current_story["acceptanceCriteria"].append({
+                                "title": criteria_line,
+                                "done": False
+                            })
 
         if current_story:
             stories.append(current_story)
