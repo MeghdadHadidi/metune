@@ -106,8 +106,8 @@ class V2Parser:
         current_story = None
         in_acceptance = False
 
-        # Pattern for story headers: ## US-001: Title
-        story_pattern = r"##\s+(US-\d+):\s*(.+)"
+        # Pattern for story headers: ## US-001: Title or ### US-001: Title
+        story_pattern = r"#{2,3}\s+(US-\d+):\s*(.+)"
         # Pattern for epic reference: **Epic:** E-001
         epic_pattern = r"\*\*Epic:\*\*\s*([E]-\d+)"
         # Pattern for acceptance criteria header
