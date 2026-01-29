@@ -62,8 +62,8 @@ class V2Parser:
         epics = []
         current_quarter = None
 
-        # Pattern for quarter headers: ### Q1: Theme
-        quarter_pattern = r"###\s+(Q[1-4]):\s*(.+)"
+        # Pattern for quarter headers: ### Q1: Theme or ### Q01: Theme
+        quarter_pattern = r"###\s+Q0?([1-4]):\s*(.+)"
         # Pattern for epics: - [ ] **E-001: Title** - Description
         epic_pattern = r"-\s*\[.\]\s*\*\*([E]-\d+):\s*([^*]+)\*\*\s*-?\s*(.*)"
 
@@ -71,7 +71,8 @@ class V2Parser:
             # Check for quarter header
             q_match = re.match(quarter_pattern, line)
             if q_match:
-                current_quarter = q_match.group(1)
+                # Normalize to Q1, Q2, etc. (without zero padding)
+                current_quarter = f"Q{q_match.group(1)}"
                 self.log(f"Found quarter: {current_quarter}")
                 continue
 
@@ -452,17 +453,23 @@ class V3GraphBuilder:
 
 
 def find_quarters(base_path: str) -> list:
-    """Find all quarter directories."""
+    """Find all quarter directories (handles both Q1 and Q01 formats)."""
     quarters_path = Path(base_path) / "docs" / "04-plan" / "quarters"
     if not quarters_path.exists():
         return []
 
     quarters = []
     for item in quarters_path.iterdir():
-        if item.is_dir() and re.match(r"q\d+", item.name, re.IGNORECASE):
-            quarters.append(item.name.upper() if len(item.name) == 2 else f"Q{item.name[1]}")
+        if item.is_dir():
+            # Match q1, q01, Q1, Q01, etc.
+            match = re.match(r"q0?(\d+)", item.name, re.IGNORECASE)
+            if match:
+                # Store as tuple (normalized_id, original_folder_name) for proper sorting
+                quarter_num = int(match.group(1))
+                quarters.append((f"Q{quarter_num}", item.name))
 
-    return sorted(quarters)
+    # Sort by quarter number and return list of (normalized, folder_name) tuples
+    return sorted(quarters, key=lambda x: int(x[0][1:]))
 
 
 def migrate(dry_run: bool = False, verbose: bool = False) -> dict:
@@ -507,36 +514,39 @@ def migrate(dry_run: bool = False, verbose: bool = False) -> dict:
 
     # Find and parse quarters
     quarters = find_quarters(base_path)
-    print(f"Found quarters: {', '.join(quarters) if quarters else 'none'}")
+    quarter_names = [q[0] for q in quarters]  # Normalized names (Q1, Q2, etc.)
+    print(f"Found quarters: {', '.join(quarter_names) if quarters else 'none'}")
     print()
 
     all_stories = []
     all_tasks = []
 
-    for quarter in quarters:
-        q_lower = quarter.lower()
-        q_path = os.path.join(base_path, "docs", "04-plan", "quarters", q_lower)
+    for quarter_id, folder_name in quarters:
+        q_path = os.path.join(base_path, "docs", "04-plan", "quarters", folder_name)
 
         # Parse stories
         stories_path = os.path.join(q_path, "stories.md")
         if os.path.exists(stories_path):
-            print(f"Parsing {quarter} stories...")
+            print(f"Parsing {quarter_id} stories ({folder_name}/stories.md)...")
             stories = parser.parse_stories_md(stories_path)
             print(f"  Found {len(stories)} stories")
             all_stories.extend(stories)
 
-        # Parse sprint files
+        # Parse sprint files (optional - may not exist yet)
         sprint_files = sorted(Path(q_path).glob("sprint*.md"))
-        for sprint_file in sprint_files:
-            print(f"Parsing {sprint_file.name}...")
-            tasks = parser.parse_sprint_md(str(sprint_file))
-            print(f"  Found {len(tasks)} tasks")
-            all_tasks.extend(tasks)
+        if sprint_files:
+            for sprint_file in sprint_files:
+                print(f"Parsing {sprint_file.name}...")
+                tasks = parser.parse_sprint_md(str(sprint_file))
+                print(f"  Found {len(tasks)} tasks")
+                all_tasks.extend(tasks)
+        else:
+            print(f"  No sprint files found in {folder_name}/ (this is OK)")
 
         # Parse individual task files if they exist
         tasks_dir = os.path.join(q_path, "tasks")
         if os.path.isdir(tasks_dir):
-            print(f"Parsing {quarter} task files...")
+            print(f"Parsing {quarter_id} task files...")
             task_files = list(Path(tasks_dir).glob("T-*.md"))
             for task_file in task_files:
                 task = parser.parse_task_file(str(task_file))
