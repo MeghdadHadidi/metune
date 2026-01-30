@@ -360,8 +360,8 @@ class PeachflowGraph:
 
     # === Update Operations ===
 
-    def update(self, entity_type: str, entity_id: str, **kwargs) -> dict:
-        """Update entity fields."""
+    def update(self, entity_type: str, entity_id: str, cascade: bool = True, **kwargs) -> dict:
+        """Update entity fields. Optionally cascade status changes to parents."""
         self._ensure_loaded()
         entity = self.get(entity_type, entity_id)
 
@@ -370,6 +370,9 @@ class PeachflowGraph:
             valid_statuses = ENTITY_STATUSES.get(entity_type, [])
             if valid_statuses and kwargs["status"] not in valid_statuses:
                 raise ValueError(f"Invalid status: {kwargs['status']}. Must be one of {valid_statuses}")
+
+        # Track if status changed
+        status_changed = "status" in kwargs and entity.get("status") != kwargs["status"]
 
         # Update fields
         for key, value in kwargs.items():
@@ -387,7 +390,18 @@ class PeachflowGraph:
             entity["clarifiedAt"] = self._now()
 
         self._save()
-        return entity
+
+        # Cascade status check if status changed and cascade is enabled
+        cascade_changes = {}
+        if cascade and status_changed:
+            cascade_changes = self.cascade_status_check(entity_type, entity_id)
+
+        # Return entity with cascade info
+        result = entity.copy()
+        if cascade_changes:
+            result["_cascaded"] = cascade_changes
+
+        return result
 
     # === Delete Operations ===
 
@@ -601,6 +615,330 @@ class PeachflowGraph:
                 result["tasks"].append(self.get("task", task_id))
 
         return result
+
+    # -------------------------------------------------------------------------
+    # Status Aggregation Helpers
+    # -------------------------------------------------------------------------
+
+    def _get_story_tasks_status(self, story_id: str) -> dict:
+        """Get aggregated status counts for all tasks in a story."""
+        task_ids = self.data["relationships"]["story_tasks"].get(story_id, [])
+        tasks = [self.data["entities"]["tasks"].get(tid) for tid in task_ids
+                 if self.data["entities"]["tasks"].get(tid)]
+
+        return {
+            "total": len(tasks),
+            "completed": sum(1 for t in tasks if t["status"] == "completed"),
+            "skipped": sum(1 for t in tasks if t["status"] == "skipped"),
+            "in_progress": sum(1 for t in tasks if t["status"] == "in_progress"),
+            "blocked": sum(1 for t in tasks if t["status"] == "blocked"),
+            "pending": sum(1 for t in tasks if t["status"] == "pending"),
+        }
+
+    def _get_epic_stories_status(self, epic_id: str) -> dict:
+        """Get aggregated status counts for all stories in an epic."""
+        story_ids = self.data["relationships"]["epic_stories"].get(epic_id, [])
+        stories = [self.data["entities"]["stories"].get(sid) for sid in story_ids
+                   if self.data["entities"]["stories"].get(sid)]
+
+        return {
+            "total": len(stories),
+            "completed": sum(1 for s in stories if s["status"] == "completed"),
+            "in_progress": sum(1 for s in stories if s["status"] == "in_progress"),
+            "blocked": sum(1 for s in stories if s["status"] == "blocked"),
+            "ready": sum(1 for s in stories if s["status"] == "ready"),
+            "draft": sum(1 for s in stories if s["status"] == "draft"),
+        }
+
+    def _get_quarter_epics_status(self, quarter_id: str) -> dict:
+        """Get aggregated status counts for all epics in a quarter."""
+        epic_ids = self.data["relationships"]["quarter_epics"].get(quarter_id, [])
+        epics = [self.data["entities"]["epics"].get(eid) for eid in epic_ids
+                 if self.data["entities"]["epics"].get(eid)]
+
+        return {
+            "total": len(epics),
+            "completed": sum(1 for e in epics if e["status"] == "completed"),
+            "in_progress": sum(1 for e in epics if e["status"] == "in_progress"),
+            "blocked": sum(1 for e in epics if e["status"] == "blocked"),
+            "ready": sum(1 for e in epics if e["status"] == "ready"),
+            "draft": sum(1 for e in epics if e["status"] == "draft"),
+        }
+
+    # -------------------------------------------------------------------------
+    # Status Computation Methods
+    # -------------------------------------------------------------------------
+
+    def _compute_story_status(self, story_id: str) -> str:
+        """Compute what a story's status should be based on its tasks."""
+        stats = self._get_story_tasks_status(story_id)
+
+        if stats["total"] == 0:
+            return None  # No change - story has no tasks
+
+        # All done (completed or skipped)
+        if stats["completed"] + stats["skipped"] == stats["total"]:
+            return "completed"
+
+        # All remaining are blocked
+        remaining = stats["total"] - stats["completed"] - stats["skipped"]
+        if remaining > 0 and stats["blocked"] == remaining:
+            return "blocked"
+
+        # Some work started
+        if stats["in_progress"] > 0 or stats["completed"] > 0:
+            return "in_progress"
+
+        return None  # No status change needed
+
+    def _compute_epic_status(self, epic_id: str) -> str:
+        """Compute what an epic's status should be based on its stories."""
+        stats = self._get_epic_stories_status(epic_id)
+
+        if stats["total"] == 0:
+            return None
+
+        if stats["completed"] == stats["total"]:
+            return "completed"
+
+        remaining = stats["total"] - stats["completed"]
+        if remaining > 0 and stats["blocked"] == remaining:
+            return "blocked"
+
+        if stats["in_progress"] > 0 or stats["completed"] > 0:
+            return "in_progress"
+
+        return None
+
+    def _compute_quarter_status(self, quarter_id: str) -> str:
+        """Compute what a quarter's status should be based on its epics."""
+        stats = self._get_quarter_epics_status(quarter_id)
+
+        if stats["total"] == 0:
+            return None
+
+        if stats["completed"] == stats["total"]:
+            return "completed"
+
+        if stats["in_progress"] > 0 or stats["completed"] > 0:
+            return "active"
+
+        return None
+
+    def _compute_sprint_status(self, sprint_id: str) -> str:
+        """Compute what a sprint's status should be based on its tasks."""
+        sprint = self.data["entities"]["sprints"].get(sprint_id)
+        if not sprint:
+            return None
+
+        task_ids = sprint.get("taskIds", [])
+        if not task_ids:
+            return None
+
+        tasks = [self.data["entities"]["tasks"].get(tid) for tid in task_ids
+                 if self.data["entities"]["tasks"].get(tid)]
+
+        if not tasks:
+            return None
+
+        completed_or_skipped = sum(1 for t in tasks if t["status"] in ["completed", "skipped"])
+
+        if completed_or_skipped == len(tasks):
+            return "completed"
+
+        return None  # Sprint stays active until all tasks done
+
+    # -------------------------------------------------------------------------
+    # Cascade Status Methods
+    # -------------------------------------------------------------------------
+
+    def _unblock_dependents(self, task_id: str) -> list:
+        """Re-evaluate tasks that depend on the completed task."""
+        unblocked = []
+
+        # Find tasks that depend on this one
+        for tid, deps in self.data["relationships"]["task_dependencies"].items():
+            if task_id in deps:
+                task = self.data["entities"]["tasks"].get(tid)
+                if task and task["status"] == "blocked":
+                    # Check if all dependencies are now resolved
+                    blockers = self.get_blockers(tid)
+                    if not blockers:
+                        task["status"] = "pending"
+                        task["updatedAt"] = self._now()
+                        unblocked.append(tid)
+
+        return unblocked
+
+    def cascade_status_check(self, entity_type: str, entity_id: str) -> dict:
+        """
+        Check and update parent statuses after an entity status change.
+
+        Returns dict of all status changes made: {entity_id: new_status}
+        """
+        self._ensure_loaded()
+        changes = {}
+
+        if entity_type == "task":
+            task = self.data["entities"]["tasks"].get(entity_id)
+            if not task:
+                return changes
+
+            # If task is completed, unblock any dependents
+            if task["status"] == "completed":
+                unblocked = self._unblock_dependents(entity_id)
+                for uid in unblocked:
+                    changes[uid] = "pending (unblocked)"
+
+            # Get task's story
+            story_id = task.get("storyId")
+            if story_id:
+                # Check story status
+                new_story_status = self._compute_story_status(story_id)
+                if new_story_status:
+                    story = self.data["entities"]["stories"].get(story_id)
+                    if story and story["status"] != new_story_status:
+                        story["status"] = new_story_status
+                        story["updatedAt"] = self._now()
+                        if new_story_status == "completed":
+                            story["completedAt"] = self._now()
+                        changes[story_id] = new_story_status
+
+                # Get story's epic
+                story = self.data["entities"]["stories"].get(story_id)
+                if story:
+                    epic_id = story.get("epicId")
+                    if epic_id:
+                        # Check epic status
+                        new_epic_status = self._compute_epic_status(epic_id)
+                        if new_epic_status:
+                            epic = self.data["entities"]["epics"].get(epic_id)
+                            if epic and epic["status"] != new_epic_status:
+                                epic["status"] = new_epic_status
+                                epic["updatedAt"] = self._now()
+                                if new_epic_status == "completed":
+                                    epic["completedAt"] = self._now()
+                                changes[epic_id] = new_epic_status
+
+                        # Get epic's quarter
+                        epic = self.data["entities"]["epics"].get(epic_id)
+                        if epic:
+                            quarter_id = epic.get("quarter")
+                            if quarter_id:
+                                new_quarter_status = self._compute_quarter_status(quarter_id)
+                                if new_quarter_status:
+                                    quarter = self.data["entities"]["quarters"].get(quarter_id)
+                                    if quarter and quarter["status"] != new_quarter_status:
+                                        quarter["status"] = new_quarter_status
+                                        quarter["updatedAt"] = self._now()
+                                        if new_quarter_status == "completed":
+                                            quarter["completedAt"] = self._now()
+                                        changes[quarter_id] = new_quarter_status
+
+            # Check sprint status if task is in a sprint
+            sprint_id = task.get("sprintId")
+            if sprint_id:
+                new_sprint_status = self._compute_sprint_status(sprint_id)
+                if new_sprint_status:
+                    sprint = self.data["entities"]["sprints"].get(sprint_id)
+                    if sprint and sprint["status"] != new_sprint_status:
+                        sprint["status"] = new_sprint_status
+                        sprint["completedAt"] = self._now()
+                        sprint["updatedAt"] = self._now()
+                        changes[sprint_id] = new_sprint_status
+
+        elif entity_type == "story":
+            # Cascade up from story
+            story = self.data["entities"]["stories"].get(entity_id)
+            if story:
+                epic_id = story.get("epicId")
+                if epic_id:
+                    new_epic_status = self._compute_epic_status(epic_id)
+                    if new_epic_status:
+                        epic = self.data["entities"]["epics"].get(epic_id)
+                        if epic and epic["status"] != new_epic_status:
+                            epic["status"] = new_epic_status
+                            epic["updatedAt"] = self._now()
+                            if new_epic_status == "completed":
+                                epic["completedAt"] = self._now()
+                            changes[epic_id] = new_epic_status
+
+                    epic = self.data["entities"]["epics"].get(epic_id)
+                    if epic:
+                        quarter_id = epic.get("quarter")
+                        if quarter_id:
+                            new_quarter_status = self._compute_quarter_status(quarter_id)
+                            if new_quarter_status:
+                                quarter = self.data["entities"]["quarters"].get(quarter_id)
+                                if quarter and quarter["status"] != new_quarter_status:
+                                    quarter["status"] = new_quarter_status
+                                    quarter["updatedAt"] = self._now()
+                                    if new_quarter_status == "completed":
+                                        quarter["completedAt"] = self._now()
+                                    changes[quarter_id] = new_quarter_status
+
+        elif entity_type == "epic":
+            epic = self.data["entities"]["epics"].get(entity_id)
+            if epic:
+                quarter_id = epic.get("quarter")
+                if quarter_id:
+                    new_quarter_status = self._compute_quarter_status(quarter_id)
+                    if new_quarter_status:
+                        quarter = self.data["entities"]["quarters"].get(quarter_id)
+                        if quarter and quarter["status"] != new_quarter_status:
+                            quarter["status"] = new_quarter_status
+                            quarter["updatedAt"] = self._now()
+                            if new_quarter_status == "completed":
+                                quarter["completedAt"] = self._now()
+                            changes[quarter_id] = new_quarter_status
+
+        if changes:
+            self._save()
+
+        return changes
+
+    # -------------------------------------------------------------------------
+    # Acceptance Criteria Methods
+    # -------------------------------------------------------------------------
+
+    def update_acceptance_criterion(self, story_id: str, criterion_index: int, done: bool) -> dict:
+        """Update a specific acceptance criterion's done status."""
+        self._ensure_loaded()
+        story = self.get("story", story_id)
+
+        criteria = story.get("acceptanceCriteria", [])
+        if criterion_index < 0 or criterion_index >= len(criteria):
+            raise ValueError(f"Invalid criterion index: {criterion_index}. Story has {len(criteria)} criteria.")
+
+        # Handle both old format (string) and new format ({title, done})
+        if isinstance(criteria[criterion_index], str):
+            criteria[criterion_index] = {"title": criteria[criterion_index], "done": done}
+        else:
+            criteria[criterion_index]["done"] = done
+
+        story["acceptanceCriteria"] = criteria
+        story["updatedAt"] = self._now()
+        self._save()
+
+        return story
+
+    def get_acceptance_progress(self, story_id: str) -> dict:
+        """Get acceptance criteria completion status for a story."""
+        self._ensure_loaded()
+        story = self.get("story", story_id)
+
+        criteria = story.get("acceptanceCriteria", [])
+        total = len(criteria)
+        done = sum(1 for c in criteria if isinstance(c, dict) and c.get("done", False))
+
+        return {
+            "story_id": story_id,
+            "total": total,
+            "done": done,
+            "remaining": total - done,
+            "progress": done / total if total > 0 else 0,
+            "criteria": criteria
+        }
 
     def get_stats(self, quarter: str = None, epic: str = None) -> dict:
         """Get statistics."""
@@ -1199,11 +1537,30 @@ def main():
     update_parser.add_argument("--priority", type=int)
     update_parser.add_argument("--answer")  # For clarifications
     update_parser.add_argument("--worktree")  # For sprints
+    update_parser.add_argument("--no-cascade", action="store_true", help="Disable automatic status cascading")
 
     # delete
     delete_parser = subparsers.add_parser("delete", help="Delete entity")
     delete_parser.add_argument("entity_type", choices=["epic", "story", "task", "clarification", "adr", "sprint"])
     delete_parser.add_argument("entity_id")
+
+    # cascade
+    cascade_parser = subparsers.add_parser("cascade", help="Manually trigger cascade status check")
+    cascade_parser.add_argument("entity_type", choices=["task", "story", "epic"])
+    cascade_parser.add_argument("entity_id")
+
+    # acceptance
+    acceptance_parser = subparsers.add_parser("acceptance", help="Manage acceptance criteria")
+    acceptance_sub = acceptance_parser.add_subparsers(dest="acceptance_action")
+
+    acc_update = acceptance_sub.add_parser("update", help="Update acceptance criterion status")
+    acc_update.add_argument("story_id")
+    acc_update.add_argument("--index", type=int, required=True, help="Criterion index (0-based)")
+    acc_update.add_argument("--done", action="store_true", help="Mark as done")
+    acc_update.add_argument("--not-done", action="store_true", help="Mark as not done")
+
+    acc_progress = acceptance_sub.add_parser("progress", help="Show acceptance criteria progress")
+    acc_progress.add_argument("story_id")
 
     # list
     list_parser = subparsers.add_parser("list", help="List entities")
@@ -1335,11 +1692,59 @@ def main():
                     else:
                         updates[field] = val
 
-            result = graph.update(args.entity_type, args.entity_id, **updates)
+            cascade = not getattr(args, 'no_cascade', False)
+            result = graph.update(args.entity_type, args.entity_id, cascade=cascade, **updates)
             if args.format == "json":
                 print(json.dumps(result))
             else:
                 print(f"{Colors.GREEN}✓ Updated {args.entity_id}{Colors.RESET}")
+                if result.get("_cascaded"):
+                    print(f"  Cascaded status changes:")
+                    for eid, status in result["_cascaded"].items():
+                        print(f"    {eid} → {status}")
+
+        elif args.command == "cascade":
+            result = graph.cascade_status_check(args.entity_type, args.entity_id)
+            if args.format == "json":
+                print(json.dumps(result, indent=2))
+            else:
+                if result:
+                    print(f"{Colors.GREEN}Status changes cascaded:{Colors.RESET}")
+                    for entity_id, new_status in result.items():
+                        print(f"  {entity_id} → {new_status}")
+                else:
+                    print(f"{Colors.GRAY}No status changes needed.{Colors.RESET}")
+
+        elif args.command == "acceptance":
+            if args.acceptance_action == "update":
+                if args.done and args.not_done:
+                    print(f"{Colors.RED}Error: Cannot specify both --done and --not-done{Colors.RESET}")
+                    sys.exit(1)
+                done = args.done if args.done else not args.not_done
+                result = graph.update_acceptance_criterion(args.story_id, args.index, done)
+                if args.format == "json":
+                    print(json.dumps(result))
+                else:
+                    status = "done" if done else "not done"
+                    print(f"{Colors.GREEN}✓ Updated criterion {args.index} for {args.story_id} → {status}{Colors.RESET}")
+
+            elif args.acceptance_action == "progress":
+                result = graph.get_acceptance_progress(args.story_id)
+                if args.format == "json":
+                    print(json.dumps(result, indent=2))
+                else:
+                    progress_pct = result["progress"] * 100
+                    print(f"\n{Colors.BOLD}Acceptance Criteria: {args.story_id}{Colors.RESET}")
+                    print(f"Progress: {result['done']}/{result['total']} ({progress_pct:.0f}%)")
+                    for i, c in enumerate(result["criteria"]):
+                        if isinstance(c, dict):
+                            icon = f"{Colors.GREEN}✓{Colors.RESET}" if c.get("done") else "○"
+                            print(f"  [{i}] {icon} {c.get('title', c)}")
+                        else:
+                            print(f"  [{i}] ○ {c}")
+            else:
+                print(f"{Colors.RED}Error: acceptance action required (update or progress){Colors.RESET}")
+                sys.exit(1)
 
         elif args.command == "delete":
             result = graph.delete(args.entity_type, args.entity_id)
