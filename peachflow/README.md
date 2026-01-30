@@ -3,10 +3,10 @@
 **Your AI development team in a CLI.** From idea to implementation, Peachflow orchestrates specialized agents through the entire software lifecycle.
 
 ```
-  idea ──► discover ──► define ──► design ──► plan ──► implement ──► ship
-              │            │          │         │           │
-          analysts    requirements   UX &    roadmap    developers
-          research    engineers    architects  tasks    build code
+  idea ──► discover ──► plan ──► implement ──► ship
+              │           │           │
+          analysts     roadmap    developers
+          research     tasks      build code
 ```
 
 ## Quick Start
@@ -28,10 +28,7 @@
 | `init` | Set up Peachflow - asks for project name (required first) |
 | `analyze` | Reverse-engineer existing codebase |
 | `discover "idea"` | Research & create BRD/PRD |
-| `define` | Write detailed requirements |
-| `design` | Create UX specs & architecture |
-| `plan` | Build quarterly roadmap |
-| `plan Q1` | Break quarter into tasks |
+| `plan` | Build quarterly roadmap & break into tasks |
 | `implement` | Execute tasks with dev agents |
 | `clarify` | Resolve open questions |
 | `status` | Show progress |
@@ -40,14 +37,14 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  DISCOVERY          DEFINITION        DESIGN         IMPLEMENT │
-│  ───────────        ──────────        ──────         ───────── │
-│  business-analyst   requirements-     ux-designer    frontend  │
-│  market-analyst     analyst           software-      backend   │
-│  user-researcher                      architect      devops    │
-│  product-manager                                               │
-│                                                                │
-│                    + clarification-agent (always available)    │
+│  DISCOVERY          PLANNING          IMPLEMENT                 │
+│  ───────────        ────────          ─────────                 │
+│  business-analyst   tech-lead         frontend-developer        │
+│  product-manager    product-manager   backend-developer         │
+│                                       devops-engineer           │
+│                     software-architect (architecture decisions) │
+│                                                                 │
+│                    + codebase-analyst (for existing projects)   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,12 +52,12 @@
 
 **New Project:**
 ```
-init → discover → define → design → plan → plan Q1 → implement
+init → discover → plan → implement
 ```
 
 **Existing Codebase:**
 ```
-init → analyze → [plan or discover to add features] → implement
+init → analyze → plan → implement
 ```
 
 **Adding Features Mid-Project:**
@@ -71,34 +68,26 @@ discover "new feature" → plan (incremental) → implement
 ## Output Structure
 
 ```
+.peachflow-state.json           # Project settings & phase status
+.peachflow-graph.json           # Work items: epics, stories, tasks
 docs/
 ├── 01-business/BRD.md          # Why we're building
 ├── 02-product/
 │   ├── PRD.md                  # What we're building
-│   ├── user-personas.md        # Who we're building for
-│   ├── ux/                     # How it looks & feels
-│   └── architecture/           # How it's structured
-├── 03-requirements/            # Detailed specs (FR, NFR)
-├── 04-plan/
-│   ├── plan.md                 # Quarterly roadmap
-│   └── quarters/q01/           # Tasks & stories
-└── 05-debt/                    # Technical debt tracking
+│   └── architecture/adr/       # Architecture Decision Records
 ```
 
 ## Key Concepts
 
 | Concept | Format | Example |
 |---------|--------|---------|
-| Business Req | BR-XXX | BR-001 |
-| Feature | F-XXX | F-001 |
-| Functional Req | FR-XXX | FR-001 |
 | Epic | E-XXX | E-001 |
 | User Story | US-XXX | US-001 |
 | Task | T-XXX | T-001 |
+| Sprint | S-XXX | S-001 |
+| Clarification | CL-XXX | CL-001 |
 
 **Task Tags:** `[FE]` frontend · `[BE]` backend · `[DevOps]` infra · `[Full]` full-stack
-
-**Markers:** `[NEEDS CLARIFICATION: ...]` · `[INFERRED: ...]` · `[DEBT: ...]`
 
 ## Incremental Planning
 
@@ -120,24 +109,19 @@ Peachflow **never auto-commits**. On implementation:
 <summary><b>Utility Scripts Reference</b></summary>
 
 ```bash
-# Search & parse docs
-scripts/doc-search.sh id FR-001
-scripts/doc-search.sh keyword "auth" requirements
-scripts/doc-parser.sh task T-001
-scripts/doc-parser.sh count frs
-
-# Generate IDs
-scripts/id-generator.sh next fr    # → FR-001
+# Graph management
+scripts/peachflow-graph.py list epics
+scripts/peachflow-graph.py list tasks --status pending
+scripts/peachflow-graph.py ready-tasks
+scripts/peachflow-graph.py stats
 
 # State management
 scripts/state-manager.sh status
-scripts/state-manager.sh get-project-name    # Get project name for docs
-scripts/state-manager.sh get-unplanned
-scripts/state-manager.sh get-quarter-progress q01
+scripts/state-manager.sh get-project-name
 
 # Git helpers
 scripts/git-helper.sh is-main
-scripts/git-helper.sh create-worktree q01
+scripts/git-helper.sh create-worktree S-001
 ```
 
 </details>
@@ -148,18 +132,16 @@ scripts/git-helper.sh create-worktree q01
 `.peachflow-state.json`:
 ```json
 {
+  "version": "3.0.0",
   "projectName": "TaskFlow",
   "projectType": "new",
   "phases": { "discovery": "completed", "plan": "in_progress" },
-  "currentQuarter": "q01",
-  "requirements": {
-    "planned": ["BR-001", "F-001"],
-    "unplanned": ["F-020"]
-  }
+  "currentQuarter": "Q1",
+  "currentSprint": "S-001"
 }
 ```
 
-The `projectName` is used by all agents when generating documents.
+`.peachflow-graph.json` contains all work items (epics, stories, tasks, sprints).
 
 </details>
 

@@ -1,7 +1,7 @@
 ---
 name: document-standards
 description: |
-  Use this skill when creating or updating documentation in a Peachflow project. Applies when writing BRD, PRD, FRD, NFRs, UX docs, architecture docs, or planning documents.
+  Use this skill when creating or updating documentation in a Peachflow project. Applies when writing BRD, PRD, or architecture decision records (ADRs).
 ---
 
 # Peachflow Document Standards
@@ -111,46 +111,31 @@ When incomplete or missing functionality is found:
 
 ## ID Formats
 
-| Document | Format | Example |
-|----------|--------|---------|
-| Business Requirements | BR-XXX | BR-001 |
-| Features | F-XXX | F-001 |
-| Functional Requirements | FR-XXX | FR-001 |
-| Non-Functional Requirements | NFR-XXX | NFR-001 |
+| Entity | Format | Example |
+|--------|--------|---------|
 | Epics | E-XXX | E-001 |
 | User Stories | US-XXX | US-001 |
 | Tasks | T-XXX | T-001 |
-| ADRs | NNNN-title.md | 0001-use-postgresql.md |
+| Sprints | S-XXX | S-001 |
+| Clarifications | CL-XXX | CL-001 |
+| ADRs | ADR-NNNN | ADR-0001 |
 
 ## File Locations
 
 ```
+.peachflow-state.json       # Project settings & phase status
+.peachflow-graph.json       # All work items (epics, stories, tasks, sprints)
 docs/
 ├── 01-business/
-│   └── BRD.md
+│   └── BRD.md              # Business Requirements Document
 ├── 02-product/
-│   ├── PRD.md
-│   ├── user-personas.md
-│   ├── user-flows.md
-│   ├── ux/
-│   │   └── [11 UX documents]
+│   ├── PRD.md              # Product Requirements Document
 │   └── architecture/
-│       ├── high-level-design.md
 │       └── adr/
-│           └── NNNN-title.md
-├── 03-requirements/
-│   ├── FRD.md
-│   └── NFRs.md
-├── 04-plan/
-│   ├── plan.md
-│   └── quarters/
-│       └── qXX/
-│           ├── plan.md
-│           ├── stories.md
-│           └── tasks/
-│               └── NNN.md
-└── clarification.md
+│           └── ADR-NNNN-title.md
 ```
+
+**Note:** Epics, user stories, tasks, and sprints are stored in the graph JSON file, not as separate markdown documents.
 
 ## Anti-patterns to Avoid
 

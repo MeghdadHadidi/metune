@@ -132,25 +132,7 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
   --depends-on "T-001"
 ```
 
-### 5. Design Skills Reference
-
-Check available design skills:
-
-```bash
-ls -1 .claude/skills/ 2>/dev/null || echo "No design skills"
-```
-
-Reference relevant skills in task descriptions:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
-  --story US-002 \
-  --title "Build login form component" \
-  --tag FE \
-  --description "Create login form. Use design-system for tokens, component-patterns for form layout, accessibility for ARIA"
-```
-
-### 6. Task Description Guidelines
+### 5. Task Description Guidelines
 
 Keep descriptions brief and actionable:
 
@@ -164,7 +146,7 @@ Create POST /api/users endpoint with email validation and bcrypt password hashin
 This task involves creating an API endpoint for user registration. The endpoint should accept POST requests at the /api/users path. It needs to validate email format, check for duplicates, hash passwords using bcrypt, create the user record, and return appropriate responses. Error handling should include...
 ```
 
-### 7. Clarifications
+### 6. Clarifications
 
 When technical decisions are unclear:
 

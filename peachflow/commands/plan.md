@@ -26,10 +26,10 @@ if [ ! -f ".peachflow-state.json" ] || [ ! -f ".peachflow-graph.json" ]; then
   exit 1
 fi
 
-# Check design completed
-design_status=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['phases']['design']['status'])")
-if [ "$design_status" != "completed" ]; then
-  echo "DESIGN_NOT_COMPLETE"
+# Check discovery completed
+discovery_status=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['phases']['discovery']['status'])")
+if [ "$discovery_status" != "completed" ]; then
+  echo "DISCOVERY_NOT_COMPLETE"
 fi
 
 # Check if already planned
@@ -39,9 +39,9 @@ plan_status=$(python3 -c "import json; print(json.load(open('.peachflow-state.js
 epic_count=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
 ```
 
-**If design not complete:**
+**If discovery not complete:**
 ```
-Design phase not complete. Run /peachflow:design first.
+Discovery phase not complete. Run /peachflow:discover first.
 ```
 
 **If no epics:**
@@ -85,9 +85,6 @@ with open('.peachflow-state.json', 'w') as f:
 ```bash
 # Get all epics ordered by quarter and priority
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json
-
-# Get ADRs for technical context
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list adrs --format json
 
 # Read PRD for features
 cat docs/02-product/PRD.md
@@ -135,8 +132,6 @@ Graph tool: ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py
 Story: US-001 - User can register with email
 Acceptance criteria: [list]
 Testing strategy: $testing_strategy / $testing_intensity
-Design skills available: [list from .claude/skills/]
-ADRs: [relevant decisions]
 
 Create tasks to implement this story. Consider:
 1. Testing strategy - include test tasks if not "none"
@@ -159,13 +154,6 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
   --depends-on "T-001"
 
 Return: "Done: Created X tasks for US-001 (Y FE, Z BE, W DevOps)"
-```
-
-**Note on design skills:**
-The tech-lead should note which design skills apply to each task:
-```bash
-# In task description, mention relevant skills
---description "Build form following component-patterns and accessibility skills"
 ```
 
 ### Step 5: Set Dependencies

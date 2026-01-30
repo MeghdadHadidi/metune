@@ -38,25 +38,9 @@ ls -la docs/01-business/*.md 2>/dev/null || echo "  (none)"
 echo "Product:"
 ls -la docs/02-product/*.md 2>/dev/null || echo "  (none)"
 
-# UX
-echo "UX:"
-ls -la docs/02-product/ux/*.md 2>/dev/null || echo "  (none)"
-
-# Architecture
-echo "Architecture:"
-ls -la docs/02-product/architecture/*.md 2>/dev/null || echo "  (none)"
-
 # ADRs
 echo "ADRs:"
 ls -la docs/02-product/architecture/adr/*.md 2>/dev/null || echo "  (none)"
-
-# Requirements
-echo "Requirements:"
-ls -la docs/03-requirements/*.md 2>/dev/null || echo "  (none)"
-
-# Plan
-echo "Plan:"
-ls -la docs/04-plan/*.md 2>/dev/null || echo "  (none)"
 ```
 
 ### 3. Clarification Status
@@ -87,46 +71,33 @@ Format output as:
 
 Phases:
   [x] Discovery: completed (2024-01-10)
-  [x] Definition: completed (2024-01-12)
-  [x] Design: completed (2024-01-15)
   [>] Plan: in_progress
-  [ ] Implementation: pending
 
 Current Quarter: Q1
+Current Sprint: S-001
 
 Documents:
   Business (1):
     - BRD.md
-  Product (4):
+  Product (2):
     - PRD.md
-    - user-personas.md
-    - user-flows.md
-  UX (11):
-    - ux-strategy.md
-    - design-system.md
-    - [...]
-  Architecture (1 + 5 ADRs):
-    - high-level-design.md
+  ADRs (3):
     - ADR-0001: Database choice
     - ADR-0002: Authentication
     - [...]
-  Requirements (2):
-    - FRD.md
-    - NFRs.md
-  Plan:
-    - plan.md
+
+Graph (from .peachflow-graph.json):
+  Epics: 5 (2 completed)
+  User Stories: 15 (8 completed)
+  Tasks: 42 (24 completed, 57%)
+  Sprints: 3 (1 active)
 
 Clarifications:
   Pending: 3
   Resolved: 12
 
-Q1 Progress:
-  Epics: 2/5 complete
-  User Stories: 8/15 complete
-  Tasks: 24/42 complete (57%)
-
 Next Actions:
-  - Run /peachflow:plan Q1 to create quarterly plan
+  - Run /peachflow:plan to create stories and tasks
   - Run /peachflow:clarify to resolve 3 pending questions
 ```
 

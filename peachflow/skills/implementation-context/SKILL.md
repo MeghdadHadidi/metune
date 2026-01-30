@@ -15,26 +15,22 @@ description: |
 
 Consolidated reference for all implementation tasks. Load this skill instead of reading multiple documents.
 
-## Utility Scripts Reference
+## Graph Tool Reference
 
 ```bash
 # Task Operations
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh task T-XXX      # Get task details
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh acceptance T-XXX # Get acceptance criteria
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh story US-XXX    # Get user story
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh fr FR-XXX       # Get functional requirement
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh nfr NFR-XXX     # Get non-functional requirement
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-parser.sh adr NNNN        # Get architecture decision
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get task T-XXX    # Get task details
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get story US-XXX  # Get user story
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py chain T-XXX       # Get full hierarchy
 
 # Search Operations
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-search.sh tag [FE|BE|DevOps]  # Find tasks by tag
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-search.sh deps T-XXX          # Check dependencies
-${CLAUDE_PLUGIN_ROOT}/scripts/doc-search.sh keyword "term" [area] # Search docs
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list tasks --tag FE    # Find by tag
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py ready-tasks            # Unblocked tasks
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py depends blockers T-XXX # Check dependencies
 
 # Status Management
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh status "path/to/task.md" "in_progress|completed"
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check "path/to/file.md" "item text"
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh count "path/to/task.md"
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update task T-XXX --status completed
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py stats  # Show progress
 ```
 
 ## Task Completion Checklist
@@ -42,17 +38,8 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh count "path/to/task.md"
 After implementing any task:
 
 ```bash
-# 1. Mark task completed
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh status \
-  "docs/04-plan/quarters/${quarter}/tasks/NNN.md" "completed"
-
-# 2. Update stories.md
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
-  "docs/04-plan/quarters/${quarter}/stories.md" "T-NNN"
-
-# 3. Update plan.md
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
-  "docs/04-plan/quarters/${quarter}/plan.md" "T-NNN"
+# Mark task completed in graph
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update task T-XXX --status completed
 ```
 
 ## Quality Standards by Role
@@ -68,7 +55,7 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
 
 ### Frontend [FE]
 - [ ] All states handled (loading, error, empty, success)
-- [ ] Uses only design tokens (no hardcoded values)
+- [ ] Follows existing project styling patterns
 - [ ] Keyboard navigable (Tab, Enter, Escape)
 - [ ] ARIA labels on interactive elements
 - [ ] Works at all breakpoints
@@ -85,14 +72,9 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh check \
 
 | Need | Document Path |
 |------|---------------|
-| API contracts | `docs/02-product/architecture/high-level-design.md` |
+| Product requirements | `docs/02-product/PRD.md` |
 | Tech decisions | `docs/02-product/architecture/adr/` |
-| UI specs | `docs/03-design/ux/ui-specifications.md` |
-| Components | `docs/03-design/ux/component-library.md` |
-| Design tokens | `docs/03-design/ux/design-system.md` |
-| Interactions | `docs/03-design/ux/interaction-specs.md` |
-| Accessibility | `docs/03-design/ux/accessibility-guidelines.md` |
-| NFRs | `docs/03-requirements/NFRs.md` |
+| Business context | `docs/01-business/BRD.md` |
 
 ## Output Format
 

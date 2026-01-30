@@ -3,13 +3,15 @@
 migrate-v2-to-v3.py - Migrate peachflow v2 projects to v3 graph structure
 
 Parses v2 markdown files (sprints, tasks, stories) and populates the v3 graph.
+After migration, deletes v2 markdown files that are now stored in the graph.
 
 Usage:
-    migrate-v2-to-v3.py [--dry-run] [--verbose]
+    migrate-v2-to-v3.py [--dry-run] [--verbose] [--no-cleanup]
 
 Options:
-    --dry-run   Show what would be migrated without making changes
-    --verbose   Show detailed parsing information
+    --dry-run     Show what would be migrated without making changes
+    --verbose     Show detailed parsing information
+    --no-cleanup  Don't delete v2 files after migration (keeps docs/04-plan/, etc.)
 """
 
 import argparse
@@ -486,7 +488,56 @@ def find_quarters(base_path: str) -> list:
     return sorted(quarters, key=lambda x: int(x[0][1:]))
 
 
-def migrate(dry_run: bool = False, verbose: bool = False) -> dict:
+def cleanup_v2_files(dry_run: bool = False, verbose: bool = False) -> list:
+    """Remove v2 markdown files that are now stored in the graph."""
+    import shutil
+
+    files_to_delete = []
+    dirs_to_delete = []
+
+    # Files/directories that are no longer needed in v3
+    v2_paths = [
+        "docs/03-requirements",       # FRD.md, NFRs.md - not used in v3
+        "docs/03-ux",                 # UX docs - removed in v3
+        "docs/03-design",             # Design docs - removed in v3
+        "docs/04-plan",               # All plan/sprint/task files - now in graph
+        "docs/05-debt",               # Technical debt tracking - not used
+    ]
+
+    for path in v2_paths:
+        if os.path.exists(path):
+            if os.path.isdir(path):
+                dirs_to_delete.append(path)
+            else:
+                files_to_delete.append(path)
+
+    deleted = []
+
+    if dry_run:
+        print("\nWould delete these v2 files/directories:")
+        for d in dirs_to_delete:
+            print(f"  [DIR]  {d}/")
+        for f in files_to_delete:
+            print(f"  [FILE] {f}")
+        return dirs_to_delete + files_to_delete
+
+    # Actually delete
+    for d in dirs_to_delete:
+        if verbose:
+            print(f"  Deleting directory: {d}/")
+        shutil.rmtree(d)
+        deleted.append(d)
+
+    for f in files_to_delete:
+        if verbose:
+            print(f"  Deleting file: {f}")
+        os.remove(f)
+        deleted.append(f)
+
+    return deleted
+
+
+def migrate(dry_run: bool = False, verbose: bool = False, cleanup: bool = True) -> dict:
     """Perform the migration."""
     parser = V2Parser(verbose=verbose)
     builder = V3GraphBuilder(verbose=verbose)
@@ -635,7 +686,6 @@ def migrate(dry_run: bool = False, verbose: bool = False) -> dict:
         "versionControlDocs": True,
         "phases": {
             "discovery": v2_state["phases"].get("discovery", {"status": "pending", "completedAt": None}),
-            "design": v2_state["phases"].get("design", {"status": "pending", "completedAt": None}),
             "plan": v2_state["phases"].get("plan", {"status": "pending", "completedAt": None}),
         },
         "currentQuarter": v2_state.get("currentQuarter"),
@@ -650,6 +700,16 @@ def migrate(dry_run: bool = False, verbose: bool = False) -> dict:
 
     with open(".peachflow-state.json", "w") as f:
         json.dump(new_state, f, indent=2)
+
+    # Cleanup old v2 files
+    if cleanup:
+        print()
+        print("Cleaning up v2 files (now stored in graph)...")
+        deleted = cleanup_v2_files(dry_run=False, verbose=verbose)
+        if deleted:
+            print(f"  Deleted {len(deleted)} v2 directories/files")
+        else:
+            print("  No v2 files to clean up")
 
     print()
     print("Migration complete!")
@@ -666,11 +726,12 @@ def main():
     parser = argparse.ArgumentParser(description="Migrate peachflow v2 to v3")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--no-cleanup", action="store_true", help="Don't delete v2 files after migration")
 
     args = parser.parse_args()
 
     try:
-        migrate(dry_run=args.dry_run, verbose=args.verbose)
+        migrate(dry_run=args.dry_run, verbose=args.verbose, cleanup=not args.no_cleanup)
     except MigrationError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

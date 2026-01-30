@@ -1,6 +1,6 @@
 ---
 name: peachflow:clarify
-description: Review and resolve pending clarifications stored in the graph. Clarifications are questions that arose during discovery, design, or planning.
+description: Review and resolve pending clarifications stored in the graph. Clarifications are questions that arose during discovery or planning.
 allowed-tools: Read, Write, Bash, AskUserQuestion
 ---
 
@@ -31,9 +31,8 @@ fi
 No pending clarifications.
 
 All questions have been answered. You can proceed with:
-  /peachflow:design    (if in discovery phase)
-  /peachflow:plan      (if in design phase)
-  /peachflow:create-sprint (if in plan phase)
+  /peachflow:plan            (if in discovery phase)
+  /peachflow:create-sprint   (if in plan phase)
 ```
 
 ---
@@ -142,7 +141,7 @@ Next: Continue with your current phase
 ## Clarification Workflow
 
 ```
-Any phase (discover/design/plan)
+Any phase (discover/plan)
     │
     ▼
 Agent encounters ambiguity

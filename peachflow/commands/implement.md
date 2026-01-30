@@ -177,21 +177,14 @@ I will now plan the implementation approach for these tasks:
 [DevOps] T-005: Set up JWT configuration
 
 This will involve:
-1. Reading relevant design skills for guidance
-2. Understanding the codebase structure
-3. Identifying files to create/modify
-4. Planning the implementation order
+1. Understanding the codebase structure
+2. Identifying files to create/modify
+3. Planning the implementation order
 ```
 
 ### In Plan Mode
 
-1. **Load Design Skills** (if any exist):
-   ```bash
-   ls .claude/skills/
-   # If design-system.md exists, load it
-   ```
-
-2. **Analyze Task Requirements**:
+1. **Analyze Task Requirements**:
    - Read the task chain to understand context
    ```bash
    export PEACHFLOW_GRAPH_PATH="$graph_path"
@@ -200,17 +193,17 @@ This will involve:
    - Understand acceptance criteria from user story
    - Identify technical requirements
 
-3. **Explore Codebase** (use Explore agent if needed):
+2. **Explore Codebase** (use Explore agent if needed):
    - Find relevant existing files
    - Understand patterns in use
    - Identify integration points
 
-4. **Write Plan**:
+3. **Write Plan**:
    - List files to create/modify
    - Outline implementation steps
    - Note any risks or clarifications needed
 
-5. **Exit Plan Mode** when plan is ready for approval.
+4. **Exit Plan Mode** when plan is ready for approval.
 
 ---
 
@@ -260,10 +253,6 @@ Context:
 - Epic: E-001 - User Authentication (Q1)
 - Story: US-001 - User can create account
 - Acceptance: Password stored securely with bcrypt
-
-Design skills loaded: (if applicable)
-- design-system: Using color tokens for form styling
-- accessibility: ARIA labels for form fields
 
 Implementation plan:
 [The plan from plan mode]
@@ -449,21 +438,3 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py depends blockers T-003
 
 Show blockers and offer to pull them into current sprint or defer.
 
----
-
-## Design Skills Integration
-
-Before implementing FE tasks, check for design skills:
-
-```bash
-if [ -f ".claude/skills/design-system.md" ]; then
-  echo "Loading design-system skill"
-  # Pass to frontend-developer agent
-fi
-
-if [ -f ".claude/skills/component-patterns.md" ]; then
-  echo "Loading component-patterns skill"
-fi
-```
-
-Pass loaded skills to implementation agents so they follow design guidelines.

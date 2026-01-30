@@ -88,22 +88,20 @@ Examples:
 
 ## Finding Tagged Tasks
 
-To find all tasks of a type:
+To find tasks by tag, use the graph tool:
 
 ```bash
 # Find all frontend tasks
-grep -r "\[FE\]" docs/04-plan/quarters/*/tasks/ --include="*.md"
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list tasks --tag FE
 
 # Find all backend tasks
-grep -r "\[BE\]" docs/04-plan/quarters/*/tasks/ --include="*.md"
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list tasks --tag BE
 
 # Find all devops tasks
-grep -r "\[DevOps\]" docs/04-plan/quarters/*/tasks/ --include="*.md"
-```
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list tasks --tag DevOps
 
-Or use the checklist manager:
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/checklist-manager.sh find-tagged docs/04-plan/quarters/q01/tasks "FE"
+# Find ready (unblocked) tasks
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py ready-tasks
 ```
 
 ## Parallel Execution
@@ -120,28 +118,28 @@ Tasks with the same tag can often run in parallel if no dependencies:
 - T-003: [BE] Create login API (depends on T-001 for user model)
 ```
 
-## Task File Format
+## Task Structure in Graph
 
-```markdown
----
-id: T-001
-title: "[BE] Implement user registration API"
-epic: E-001
-story: US-001
-status: pending
-depends_on: []
-parallel_with: [T-002, T-007]
----
+Tasks are stored in `.peachflow-graph.json`:
 
-# T-001: [BE] Implement user registration API
-
-## Description
-[What needs to be done]
-
-## Acceptance Criteria
-- [ ] [Criterion 1]
-- [ ] [Criterion 2]
-
-## Technical Notes
-[Implementation guidance]
+```json
+{
+  "entities": {
+    "tasks": {
+      "T-001": {
+        "id": "T-001",
+        "title": "Implement user registration API",
+        "tag": "BE",
+        "storyId": "US-001",
+        "description": "POST /api/users with validation",
+        "status": "pending"
+      }
+    }
+  },
+  "relationships": {
+    "task_dependencies": {
+      "T-003": ["T-001"]
+    }
+  }
+}
 ```

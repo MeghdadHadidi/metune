@@ -96,12 +96,16 @@ What was migrated:
   - Epics, stories, and tasks converted to graph
   - Sprint information preserved
 
+What was cleaned up:
+  - docs/04-plan/ (now in graph)
+  - docs/03-requirements/ (not used in v3)
+  - docs/03-ux/, docs/03-design/ (removed in v3)
+
 Backup created: .peachflow-state.json.v2.backup
 
 Next steps:
   1. Review settings with /peachflow:config
-  2. If you have UX docs in docs/03-ux/, convert them to design skills
-  3. Continue with /peachflow:create-sprint or /peachflow:implement
+  2. Continue with /peachflow:create-sprint or /peachflow:implement
 ```
 
 **If migration fails:**
@@ -152,16 +156,19 @@ python3 /path/to/peachflow/scripts/migrate-v2-to-v3.py --verbose
 | `docs/04-plan/sprint-*.md` | Sprint entities + task assignments |
 | `docs/04-plan/tasks/*.md` | Task entities with dependencies |
 
+## What Gets Deleted (After Migration)
+
+After successfully migrating data to the graph, these v2 directories are deleted:
+
+- `docs/03-requirements/` - FRD.md, NFRs.md (not used in v3)
+- `docs/03-ux/` - UX documentation (removed in v3)
+- `docs/03-design/` - Design docs (removed in v3)
+- `docs/04-plan/` - Plan/sprint/task files (now in graph)
+- `docs/05-debt/` - Technical debt tracking
+
+To keep these files, use: `--no-cleanup` flag
+
 ## What's Preserved (Not Changed)
 
 - `docs/01-business/` - BRD documents
 - `docs/02-product/` - PRD and architecture docs
-- `docs/03-ux/` - UX documentation (needs manual conversion to skills)
-
-## What Needs Manual Work
-
-UX documentation in `docs/03-ux/` should be converted to design skills:
-
-1. Run `/peachflow:design` to generate skill templates
-2. Copy relevant patterns from old UX docs to new skills
-3. Delete `docs/03-ux/` when done

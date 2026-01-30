@@ -183,7 +183,7 @@ Epics created in graph:
 Clarifications needed: Z items
 Run /peachflow:clarify to resolve them.
 
-Next: /peachflow:design
+Next: /peachflow:plan
 ```
 
 ---
@@ -243,7 +243,7 @@ New epics:
 Related to:
   - E-001: User Authentication (may need coordination)
 
-Next: /peachflow:design (to update design for new features)
+Next: /peachflow:plan
 ```
 
 ---

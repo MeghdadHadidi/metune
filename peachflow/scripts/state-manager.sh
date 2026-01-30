@@ -35,7 +35,6 @@ init_state() {
   "versionControlDocs": $vc_json,
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
-    "design": { "status": "pending", "completedAt": null },
     "plan": { "status": "pending", "completedAt": null }
   },
   "currentQuarter": null,
@@ -469,8 +468,7 @@ show_status() {
     echo "Git Tracking: $version_control"
     echo ""
     echo "Phases:"
-    # v3 has discovery, design, plan; v2 has discovery, definition, design, plan
-    for phase in discovery design plan; do
+    for phase in discovery plan; do
       status=$(jq -r ".phases.${phase}.status // \"pending\"" "$STATE_FILE")
       case "$status" in
         "completed") icon="[x]" ;;

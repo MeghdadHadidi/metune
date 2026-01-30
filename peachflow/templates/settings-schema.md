@@ -172,7 +172,6 @@ This schema defines all user-configurable settings for peachflow. The `/peachflo
 .peachflow-state.json
 .peachflow-graph.json
 docs/
-.claude/skills/
 ```
 
 ---
@@ -217,7 +216,6 @@ Then present ONLY the selected setting questions using the exact formats above.
   "versionControlDocs": true,
   "phases": {
     "discovery": { "status": "pending", "completedAt": null },
-    "design": { "status": "pending", "completedAt": null },
     "plan": { "status": "pending", "completedAt": null }
   },
   "currentSprint": null,
@@ -243,7 +241,6 @@ Git tracking: Yes
 
 Phases:
   [x] Discovery (completed)
-  [x] Design (completed)
   [ ] Plan (pending)
 ```
 

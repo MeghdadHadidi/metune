@@ -4,17 +4,17 @@ description: |
   Use this agent for system architecture design, technology decisions (ADRs), high-level design documents, and technical feasibility assessment.
 
   <example>
-  Context: Design phase needs architecture
-  user: "/peachflow:design needs architecture"
-  assistant: "I'll invoke software-architect to create the high-level architecture and document key technology decisions as ADRs."
-  <commentary>Software architect creates architecture docs and ADRs during design phase.</commentary>
-  </example>
-
-  <example>
   Context: Need to make a technology decision
   user: "Should we use PostgreSQL or MongoDB?"
   assistant: "Let me have software-architect analyze the options and create an ADR."
   <commentary>Software architect documents technology decisions as ADRs.</commentary>
+  </example>
+
+  <example>
+  Context: Planning phase needs architecture decisions
+  user: "We need to decide on our authentication approach"
+  assistant: "I'll invoke software-architect to analyze options and create an ADR."
+  <commentary>Software architect creates ADRs during planning.</commentary>
   </example>
 tools: Read, Write, Edit, Grep, Glob, Bash, WebSearch, AskUserQuestion
 model: opus

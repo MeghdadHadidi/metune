@@ -10,114 +10,68 @@ description: |
 
 | Type | Format | Range | Example |
 |------|--------|-------|---------|
-| Business Requirement | BR-XXX | 001-999 | BR-001 |
-| Feature | F-XXX | 001-999 | F-001 |
-| Functional Requirement | FR-XXX | 001-999 | FR-001 |
-| Non-Functional Requirement | NFR-XXX | 001-999 | NFR-001 |
 | Epic | E-XXX | 001-999 | E-001 |
 | User Story | US-XXX | 001-999 | US-001 |
 | Task | T-XXX | 001-999 | T-001 |
+| Sprint | S-XXX | 001-999 | S-001 |
+| Clarification | CL-XXX | 001-999 | CL-001 |
+| ADR | ADR-NNNN | 0001-9999 | ADR-0001 |
 
-## ID Ranges (Recommended)
+## Hierarchy Chain
 
-### Functional Requirements (FR)
-- FR-001 to FR-099: User Management
-- FR-100 to FR-199: Core Features
-- FR-200 to FR-299: Integrations
-- FR-300 to FR-399: Reporting
-- FR-400 to FR-499: Admin Functions
-
-### Non-Functional Requirements (NFR)
-- NFR-001 to NFR-019: Performance
-- NFR-020 to NFR-039: Security
-- NFR-040 to NFR-059: Scalability
-- NFR-060 to NFR-079: Reliability
-- NFR-080 to NFR-099: Usability/Accessibility
-
-## Traceability Chain
-
-IDs link through the documentation chain:
+IDs link through the graph structure:
 
 ```
-BR-001 (Business Requirement)
-  └── F-001 (Feature in PRD)
-        └── FR-001, FR-002 (Functional Requirements)
-              └── E-001 (Epic in Plan)
-                    └── US-001, US-002 (User Stories)
-                          └── T-001, T-002, T-003 (Tasks)
+E-001 (Epic)
+  └── US-001, US-002 (User Stories)
+        └── T-001, T-002, T-003 (Tasks)
+
+S-001 (Sprint)
+  └── T-001, T-002 (Tasks assigned to sprint)
 ```
 
 ## Usage Examples
 
-### In BRD
-```markdown
-### BR-001: User Self-Service Registration
-Users must be able to create their own accounts without admin intervention.
+### Creating Epics
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create epic \
+  --title "User Authentication" \
+  --quarter Q1 \
+  --priority 1 \
+  --description "Complete auth system"
 ```
 
-### In PRD
-```markdown
-#### F-001: User Registration
-- **Business Requirement**: BR-001
-- **Priority**: Must Have
+### Creating Stories
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create story \
+  --epic E-001 \
+  --title "User can register" \
+  --description "New users can create accounts" \
+  --acceptance "Given valid email,When form submitted,Then account created"
 ```
 
-### In FRD
-```markdown
-#### FR-001: User Registration API
-- **Feature**: F-001
-- **Business Requirement**: BR-001
-```
-
-### In Plan
-```markdown
-## E-001: User Authentication
-**FRs**: FR-001, FR-002, FR-003
-**NFRs**: NFR-020, NFR-021
-```
-
-### In Stories
-```markdown
-## US-001: User Registration
-**Epic**: E-001
-**FRs**: FR-001
-```
-
-### In Tasks
-```markdown
----
-id: T-001
-epic: E-001
-story: US-001
----
-## FR Reference
-- FR-001: User Registration API
-```
-
-## Cross-Reference Format
-
-When referencing other IDs in documents:
-
-```markdown
-- **Source**: BR-001, F-001
-- **Related FRs**: FR-001, FR-002
-- **Related NFRs**: NFR-020
-- **Epic**: E-001
-- **Story**: US-001
-- **Dependencies**: T-001, T-002
+### Creating Tasks
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
+  --story US-001 \
+  --title "Create registration API" \
+  --tag BE \
+  --description "POST /api/users endpoint"
 ```
 
 ## Finding by ID
 
 ```bash
-# Find all references to a requirement
-grep -r "FR-001" docs/ --include="*.md"
+# Get entity details
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get epic E-001
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get story US-001
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py get task T-001
 
-# Find all tasks for an epic
-grep -r "epic: E-001" docs/04-plan/quarters/*/tasks/ --include="*.md"
+# Get hierarchy chain
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py chain T-001
 
-# Find all features for a business requirement
-grep -r "BR-001" docs/02-product/PRD.md
+# Get all descendants of an epic
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py descendants epic E-001
 ```
 
 ## ID Assignment Rules

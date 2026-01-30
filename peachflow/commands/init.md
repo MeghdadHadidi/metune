@@ -181,7 +181,6 @@ state = {
     "versionControlDocs": True,
     "phases": {
         "discovery": {"status": "pending", "completedAt": None},
-        "design": {"status": "pending", "completedAt": None},
         "plan": {"status": "pending", "completedAt": None}
     },
     "currentSprint": None,
@@ -206,7 +205,6 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py init
 mkdir -p docs/01-business
 mkdir -p docs/02-product
 mkdir -p docs/02-product/architecture/adr
-mkdir -p .claude/skills
 ```
 
 ### Step 7: Handle Version Control Setting
@@ -225,7 +223,6 @@ if ! grep -q "# Peachflow" .gitignore; then
 .peachflow-state.json
 .peachflow-graph.json
 docs/
-.claude/skills/
 EOF
   echo "Added peachflow files to .gitignore"
 fi
@@ -250,7 +247,6 @@ Files created:
   - .peachflow-state.json (project state)
   - .peachflow-graph.json (work items graph)
   - docs/ (document structure)
-  - .claude/skills/ (for generated design skills)
 
 Next: /peachflow:discover "your product idea"
 ```
@@ -364,7 +360,6 @@ if ! grep -q "# Peachflow" .gitignore; then
 .peachflow-state.json
 .peachflow-graph.json
 docs/
-.claude/skills/
 EOF
 fi
 ```
@@ -408,7 +403,6 @@ Git tracking: Yes
 | `.peachflow-state.json` | Project config, phases, sprint | Per versionControlDocs |
 | `.peachflow-graph.json` | Work items: epics, stories, tasks | Per versionControlDocs |
 | `docs/` | BRD, PRD, ADRs | Per versionControlDocs |
-| `.claude/skills/` | Generated design skills | Per versionControlDocs |
 
 ---
 
@@ -425,9 +419,6 @@ Migration to v3 will:
 ✓ Preserve your docs/ directory (BRD, PRD, ADRs)
 ✓ Convert sprint/task markdown files to graph structure
 ✓ Update state file format
-
-Note: UX documentation files in docs/03-ux/ will need manual
-conversion to design skills after migration.
 ```
 
 ### Step 2: Ask User About Migration
@@ -517,11 +508,3 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --dry-run --verbose
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/migrate-v2-to-v3.py --verbose
 ```
 
-### Post-Migration: UX Documentation
-
-After migration, UX documentation in `docs/03-ux/` needs manual conversion to design skills:
-
-1. Review existing UX docs in `docs/03-ux/`
-2. Run `/peachflow:design` to generate new design skills from templates
-3. Manually copy relevant patterns from old UX docs to new skills
-4. Delete `docs/03-ux/` when migration is complete
