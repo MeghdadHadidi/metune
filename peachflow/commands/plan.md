@@ -1,21 +1,13 @@
 ---
 name: peachflow:plan
-description: Break down epics into user stories and tasks in the graph. Plans all quarters automatically. Creates implementable work items with dependencies.
-disable-model-invocation: true
-allowed-tools: Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, Bash
+description: Break down epics into user stories and tasks using Claude's native plan mode. Explores context, writes plan for approval, then creates work items.
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, EnterPlanMode, ExitPlanMode, AskUserQuestion
+argument-hint: [--incremental]
 ---
 
 # /peachflow:plan - Planning Phase (v3)
 
-Break down epics into user stories and tasks, storing everything in the graph. Planning is done for all quarters at once.
-
-## Output Responsibility
-
-**CRITICAL**: This command is responsible for unified output.
-
-- Sub-agents return minimal responses
-- Collect results and provide ONE final summary
-- Only this command suggests next steps
+Break down epics into user stories and tasks, storing everything in the graph. Uses Claude's native plan mode for efficient planning.
 
 ## Pre-flight Check
 
@@ -32,37 +24,121 @@ if [ "$discovery_status" != "completed" ]; then
   echo "DISCOVERY_NOT_COMPLETE"
 fi
 
-# Check if already planned
+# Get plan status
 plan_status=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['phases']['plan']['status'])")
 
+# Get project info
+PROJECT_NAME=$(python3 -c "import json; print(json.load(open('.peachflow-state.json'))['projectName'])")
+
 # Get epic count
-epic_count=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+epic_count=$(${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json 2>/dev/null | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+
+# Get testing config
+testing_strategy=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('testingStrategy', 'none'))")
+testing_intensity=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('testingIntensity', 'none'))")
 ```
 
-**If discovery not complete:**
+**If NOT_INITIALIZED:**
+```
+Project not initialized. Run /peachflow:init first.
+```
+
+**If DISCOVERY_NOT_COMPLETE:**
 ```
 Discovery phase not complete. Run /peachflow:discover first.
 ```
 
-**If no epics:**
+**If no epics (epic_count = 0):**
 ```
 No epics found in graph. Run /peachflow:discover to create epics.
 ```
 
 ---
 
-## Planning Modes
+## Workflow
 
-| Condition | Mode |
-|-----------|------|
-| Plan status = pending | **Full Planning** (all quarters) |
-| Plan status = completed | **Incremental Planning** (new epics only) |
+### Step 1: Enter Plan Mode
+
+Use **EnterPlanMode** tool immediately. Planning happens in plan mode where you:
+
+1. Explore the project context
+2. Design user stories and tasks
+3. Write the plan for user approval
+4. Exit plan mode when ready
+
+### Step 2: In Plan Mode - Gather Context
+
+Read the essential context:
+
+```bash
+# Get all epics
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json
+
+# Read PRD for features
+cat docs/02-product/PRD.md
+```
+
+### Step 3: In Plan Mode - Write Plan
+
+Write your plan to: `.peachflow-plan.md`
+
+**Plan Structure:**
+
+```markdown
+# Planning: $PROJECT_NAME
+
+## Epics to Plan
+
+### E-001: [Epic Title]
+Quarter: Q1 | Priority: 1
+
+#### User Stories
+
+1. **US-001: [User can...]**
+   - Description: [1-2 sentences]
+   - Acceptance: Given X, When Y, Then Z
+
+   Tasks:
+   - T-001 [BE]: [Task title] - [brief description]
+   - T-002 [FE]: [Task title] - [brief description] (depends: T-001)
+   - T-003 [BE]: [Test task if TDD] (depends: none)
+
+2. **US-002: [User can...]**
+   [...]
+
+### E-002: [Epic Title]
+[...]
+
+## Summary
+
+- Epics: X
+- User Stories: Y
+- Tasks: Z (A FE, B BE, C DevOps)
+- Test tasks: N (based on $testing_strategy)
+
+## Dependencies
+
+Cross-story dependencies:
+- T-010 depends on T-002 (auth needed before protected routes)
+```
+
+**Guidelines:**
+- Keep task descriptions brief (1 line)
+- Use task tags: [FE], [BE], [DevOps], [Full]
+- Include test tasks based on testing strategy ($testing_strategy, $testing_intensity)
+- Set dependencies where one task requires another
+
+### Step 4: Exit Plan Mode
+
+Use **ExitPlanMode** tool when plan is complete. User will review and approve.
 
 ---
 
-## Mode A: Full Planning
+## After Plan Approval
 
-### Step 1: Initialize
+Once the user approves, execute the plan:
+
+### Step 5: Mark Planning Started
 
 ```bash
 python3 -c "
@@ -80,104 +156,44 @@ with open('.peachflow-state.json', 'w') as f:
 "
 ```
 
-### Step 2: Load Context
+### Step 6: Create All Work Items
 
+Read your plan from `.peachflow-plan.md` and create all work items using the graph tool:
+
+**For each user story:**
 ```bash
-# Get all epics ordered by quarter and priority
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --format json
-
-# Read PRD for features
-cat docs/02-product/PRD.md
-
-# Get testing config
-testing_strategy=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('testingStrategy', 'none'))")
-testing_intensity=$(python3 -c "import json; print(json.load(open('.peachflow-state.json')).get('testingIntensity', 'none'))")
-```
-
-### Step 3: Product Manager - User Stories
-
-**Invoke**: product-manager agent
-
-For each epic, create user stories:
-
-```
-Project: $PROJECT_NAME
-Graph tool: ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py
-Epic: E-001 - User Authentication
-
-Create user stories for this epic. Each story should:
-- Have a clear title
-- Brief description (1-2 sentences)
-- 3-5 acceptance criteria
-
-Use the graph tool:
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create story \
   --epic E-001 \
   --title "User can register with email" \
-  --description "New users can create an account using email and password" \
+  --description "New users register using email and password" \
   --acceptance "Given valid email,When form submitted,Then account created"
-
-Return: "Done: Created X stories for E-001"
 ```
 
-### Step 4: Tech Lead - Task Breakdown
-
-**Invoke**: tech-lead agent
-
-For each user story, create tasks:
-
-```
-Project: $PROJECT_NAME
-Graph tool: ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py
-Story: US-001 - User can register with email
-Acceptance criteria: [list]
-Testing strategy: $testing_strategy / $testing_intensity
-
-Create tasks to implement this story. Consider:
-1. Testing strategy - include test tasks if not "none"
-2. Task tags: [FE], [BE], [DevOps], [Full]
-3. Dependencies between tasks
-
-Use the graph tool:
+**For each task:**
+```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
   --story US-001 \
   --title "Create registration API endpoint" \
   --tag BE \
   --description "POST /api/users with email validation" \
   --depends-on ""
-
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create task \
-  --story US-001 \
-  --title "Build registration form" \
-  --tag FE \
-  --description "React form with client-side validation" \
-  --depends-on "T-001"
-
-Return: "Done: Created X tasks for US-001 (Y FE, Z BE, W DevOps)"
 ```
 
-### Step 5: Set Dependencies
-
-After all tasks are created, identify cross-story dependencies:
-
+**For dependencies:**
 ```bash
-# If T-010 (in US-003) depends on T-002 (in US-001)
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py depends add T-010 --on T-002
+${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py depends add T-002 --on T-001
 ```
 
-### Step 6: Update Epic/Story Status
+### Step 7: Update Status
 
-Mark epics and stories as ready when fully planned:
+Mark epics and stories as ready:
 
 ```bash
-# Update epic status
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update epic E-001 --status ready
-
-# Update story status
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py update story US-001 --status ready
 ```
 
-### Step 7: Finalize
+### Step 8: Finalize
 
 ```bash
 python3 -c "
@@ -189,174 +205,80 @@ with open('.peachflow-state.json', 'r') as f:
 
 state['phases']['plan']['status'] = 'completed'
 state['phases']['plan']['completedAt'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-state['currentQuarter'] = 'Q1'  # Set first quarter as current
+state['currentQuarter'] = 'Q1'
 state['lastUpdated'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 with open('.peachflow-state.json', 'w') as f:
     json.dump(state, f, indent=2)
 "
+
+# Clean up plan file
+rm -f .peachflow-plan.md
 ```
 
-### Output Summary
+### Output
 
 ```
 Planning complete for $PROJECT_NAME!
 
-Summary by Quarter:
-
-Q1 (3 epics, 8 stories, 24 tasks):
-  E-001: User Authentication [ready]
-    - US-001: User can register (4 tasks)
-    - US-002: User can login (3 tasks)
-    - US-003: Password recovery (3 tasks)
-  E-002: Dashboard [ready]
-    - US-004: View activity feed (4 tasks)
-    - US-005: Quick actions panel (3 tasks)
-  E-003: User Profile [ready]
-    - US-006: Edit profile info (4 tasks)
-    - US-007: Change password (3 tasks)
-
-Q2 (2 epics, 6 stories, 18 tasks):
-  E-004: Notifications [ready]
-    ...
-  E-005: Settings [ready]
-    ...
-
-Total:
-  - Epics: 5
-  - User Stories: 14
-  - Tasks: 42 (18 FE, 16 BE, 8 DevOps)
-
-Dependency chains: 12 cross-task dependencies set
+Created:
+  - X user stories
+  - Y tasks (A FE, B BE, C DevOps)
+  - Z dependencies
 
 Next: /peachflow:create-sprint
 ```
 
 ---
 
-## Mode B: Incremental Planning
+## Incremental Mode
 
-When new epics have been added after initial planning.
+If `--incremental` argument or plan status is already "completed":
 
-### Detect New Epics
+1. Find draft epics only:
+   ```bash
+   ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --status draft --format json
+   ```
 
-```bash
-# Find epics with status "draft" (not yet planned)
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list epics --status draft --format json
-```
-
-### Plan New Epics
-
-Same process as full planning, but only for draft epics:
-1. Product manager creates stories
-2. Tech lead creates tasks
-3. Dependencies set
-4. Status updated to ready
+2. Plan only for those epics
+3. Same workflow: enter plan mode, write plan, get approval, create items
 
 ---
 
-## Graph Structure After Planning
+## Testing Strategy Reference
 
-```json
-{
-  "entities": {
-    "quarters": {
-      "Q1": { "id": "Q1", "status": "planned" }
-    },
-    "epics": {
-      "E-001": {
-        "id": "E-001",
-        "title": "User Authentication",
-        "quarter": "Q1",
-        "priority": 1,
-        "status": "ready"
-      }
-    },
-    "stories": {
-      "US-001": {
-        "id": "US-001",
-        "title": "User can register",
-        "epicId": "E-001",
-        "status": "ready",
-        "acceptanceCriteria": ["..."]
-      }
-    },
-    "tasks": {
-      "T-001": {
-        "id": "T-001",
-        "title": "Create registration API",
-        "storyId": "US-001",
-        "tag": "BE",
-        "status": "pending"
-      },
-      "T-002": {
-        "id": "T-002",
-        "title": "Build registration form",
-        "storyId": "US-001",
-        "tag": "FE",
-        "status": "pending"
-      }
-    }
-  },
-  "relationships": {
-    "quarter_epics": { "Q1": ["E-001"] },
-    "epic_stories": { "E-001": ["US-001"] },
-    "story_tasks": { "US-001": ["T-001", "T-002"] },
-    "task_dependencies": { "T-002": ["T-001"] }
-  }
-}
-```
+Include test tasks based on project settings:
 
----
-
-## Testing Strategy Integration
-
-Based on testing settings, tech-lead creates appropriate test tasks:
-
-| Strategy | Tasks Created |
-|----------|---------------|
+| Strategy | Test Task Position |
+|----------|-------------------|
 | none | No test tasks |
-| tdd | Test task BEFORE implementation task |
-| bdd | Cucumber/Gherkin test task BEFORE |
+| tdd | Test task BEFORE implementation |
+| bdd | BDD test task BEFORE |
 | atdd | Acceptance test task BEFORE |
-| test-last | Test task AFTER implementation task |
+| test-last | Test task AFTER implementation |
 
-| Intensity | Test Scope |
-|-----------|------------|
+| Intensity | Scope |
+|-----------|-------|
 | essential | Unit tests only |
 | smart | Unit + component + API mocks |
-| intense | Smart + Playwright UI tests |
-
-Example with TDD + Smart:
-```
-T-001: [BE] Write registration API tests (depends on: none)
-T-002: [BE] Implement registration API (depends on: T-001)
-T-003: [FE] Write registration form tests (depends on: none)
-T-004: [FE] Build registration form (depends on: T-002, T-003)
-T-005: [FE] Write integration tests (depends on: T-004)
-```
+| intense | Smart + Playwright UI |
 
 ---
 
-## Visualize the Plan
+## Task Tags Reference
 
-After planning, users can see the full graph:
-
-```bash
-/peachflow:graph
-```
-
-Or export to markdown:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py export --format markdown > plan-overview.md
-```
+| Tag | Use For | Implemented By |
+|-----|---------|----------------|
+| `FE` | Frontend/UI | frontend-developer |
+| `BE` | Backend/API | backend-developer |
+| `DevOps` | Infrastructure | devops-engineer |
+| `Full` | Both FE+BE | Both agents |
 
 ---
 
-## Clarifications During Planning
+## Clarifications
 
-If tech-lead encounters ambiguity:
+If you encounter ambiguity while planning, add clarification:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create clarification \
@@ -364,45 +286,4 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py create clarification \
   --question "Should password recovery use email link or verification code?"
 ```
 
-List pending clarifications:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py list clarifications --pending
-```
-
-Run `/peachflow:clarify` to resolve them before implementation.
-
----
-
-## Statistics Command
-
-Show planning statistics:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/peachflow-graph.py stats
-```
-
-Output:
-```
-Project Statistics
-────────────────────────────────────────
-Progress: ░░░░░░░░░░░░░░░░░░░░ 0.0%
-
-Epics:      5 total
-            5 ready
-
-Stories:   14 total
-           14 ready
-
-Tasks:     42 total
-            0 completed
-           42 pending
-            8 blocked (by dependencies)
-
-  By tag:
-           18 [FE]
-           16 [BE]
-            8 [DevOps]
-
-Clarifications: 0 pending / 0 total
-```
+After planning, run `/peachflow:clarify` to resolve them.

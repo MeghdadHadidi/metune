@@ -1,7 +1,7 @@
 ---
 name: product-manager
 description: |
-  Use this agent for PRD creation, feature prioritization, epic creation, and user story development. Works with the graph to create and manage work items.
+  Use this agent for PRD creation, feature prioritization, and epic creation during the discovery phase. Works with the graph to create and manage work items.
 
   <example>
   Context: Discovery phase needs PRD
@@ -11,10 +11,10 @@ description: |
   </example>
 
   <example>
-  Context: Planning phase needs user stories
-  user: "Break down epics into user stories"
-  assistant: "Let me have product-manager create user stories for each epic."
-  <commentary>Product manager creates stories with acceptance criteria.</commentary>
+  Context: Need to add a new feature epic
+  user: "Add a new epic for notifications"
+  assistant: "Let me have product-manager create the notifications epic."
+  <commentary>Product manager creates epics with proper prioritization.</commentary>
   </example>
 tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 model: opus

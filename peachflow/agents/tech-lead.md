@@ -1,20 +1,20 @@
 ---
 name: tech-lead
 description: |
-  Use this agent for task breakdown, dependency analysis, and technical feasibility assessment. Creates tasks from user stories and manages the graph structure.
-
-  <example>
-  Context: Planning phase needs task breakdown
-  user: "Break down user stories into implementable tasks"
-  assistant: "I'll invoke tech-lead to create tasks with proper tags and dependencies."
-  <commentary>Tech lead creates implementable tasks from stories.</commentary>
-  </example>
+  Use this agent for dependency analysis and technical feasibility assessment. Analyzes the graph structure and task relationships.
 
   <example>
   Context: Need to assess technical dependencies
   user: "What needs to be built first?"
   assistant: "Let me have tech-lead analyze the dependency graph."
   <commentary>Tech lead manages task dependencies.</commentary>
+  </example>
+
+  <example>
+  Context: Check if a task can be started
+  user: "Can I work on the login form now?"
+  assistant: "Let me have tech-lead check the dependency chain for that task."
+  <commentary>Tech lead identifies blockers and requirements.</commentary>
   </example>
 tools: Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion
 model: opus
