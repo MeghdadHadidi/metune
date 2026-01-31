@@ -1,6 +1,6 @@
 {
   "name": "peachflow",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "description": "Your AI development team in a CLI. Uses a graph-based work item system with epics, stories, and tasks. Sprint-based implementation with git worktrees.",
   "author": {
     "name": "peachflow",
